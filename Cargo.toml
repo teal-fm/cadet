@@ -1,5 +1,5 @@
 [workspace]
-members = ["cadet/", "tealstream", "types"]
+members = ["cadet", "rocketman", "types"]
 resolver = "2"
 
 
@@ -7,7 +7,7 @@ resolver = "2"
 # main binary
 cadet = { path = "./cadet" }
 # jetstream library
-tealstream = { path = "./tealstream" }
+rocketman = { path = "./rocketman" }
 # types library
 types = { path = "./types" }
 

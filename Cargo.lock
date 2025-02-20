@@ -246,7 +246,7 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "rand",
- "tealstream",
+ "rocketman",
  "tokio",
  "tokio-tungstenite",
  "tracing",
@@ -1460,6 +1460,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "rocketman"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bon",
+ "derive_builder",
+ "flume",
+ "futures-util",
+ "metrics",
+ "rand",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1817,24 +1837,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tealstream"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bon",
- "derive_builder",
- "flume",
- "futures-util",
- "metrics",
- "rand",
- "tokio",
- "tokio-tungstenite",
- "tracing",
- "tracing-subscriber",
- "url",
-]
-
-[[package]]
 name = "thiserror"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2087,6 +2089,7 @@ dependencies = [
  "langtag",
  "regex",
  "serde",
+ "serde_bytes",
  "serde_ipld_dagcbor",
  "serde_json",
  "thiserror 2.0.11",

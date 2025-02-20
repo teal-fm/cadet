@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 use flume::unbounded;
 use futures_util::{SinkExt, StreamExt};
 use metrics_exporter_prometheus::PrometheusBuilder;
-use tealstream::{
+use rocketman::{
     connection::JetstreamConnection,
     endpoints::JetstreamEndpoints,
     handler,
@@ -40,17 +42,15 @@ async fn main() {
 
     let jetstream = JetstreamConnection::new(opts);
 
-    let ingestors: Vec<Box<dyn LexiconIngestor + Send + Sync>> = vec![
-        Box::new(LexiconPrinter),
-        // Add other ingestors as needed
-    ];
+    let mut ingestors: HashMap<String, Box<dyn LexiconIngestor + Send + Sync>> = HashMap::new();
+    ingestors.insert("app.bsky.feed.post".to_string(), Box::new(LexiconPrinter));
 
     // Spawn a task to process messages from the queue.
     tokio::spawn(async move {
         while let Ok(message) = msg_rx.recv_async().await {
             if let Err(e) = handler::handle_message(message, &ingestors).await {
                 eprintln!("Error processing message: {}", e);
-            }
+            };
         }
     });
 

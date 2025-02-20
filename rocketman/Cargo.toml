@@ -1,5 +1,5 @@
 [package]
-name = "cadet"
+name = "rocketman"
 version = "0.1.0"
 edition = "2021"
 
@@ -15,9 +15,9 @@ rand = "0.8"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 metrics = "0.24.1"
-metrics-exporter-prometheus = "0.16.2"
 anyhow = "1.0.95"
-
-rocketman.workspace = true
+derive_builder = "0.20.2"
+bon = "3.3.2"
 flume = "0.11.1"
-async-trait = "0.1.86"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
