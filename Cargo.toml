@@ -1,0 +1,15 @@
+[workspace]
+members = ["cadet/", "tealstream", "types"]
+resolver = "2"
+
+
+[workspace.dependencies]
+# main binary
+cadet = { path = "./cadet" }
+# jetstream library
+tealstream = { path = "./tealstream" }
+# types library
+types = { path = "./types" }
+
+serde = "1"
+serde_json = "1"
