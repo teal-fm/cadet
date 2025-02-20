@@ -1,17 +1,14 @@
 use std::collections::HashMap;
 
 use flume::unbounded;
-use futures_util::{SinkExt, StreamExt};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use rocketman::{
-    connection::JetstreamConnection,
-    endpoints::JetstreamEndpoints,
-    handler,
-    ingestion::LexiconIngestor,
-    options::{JetstreamOptions, JetstreamOptionsBuilder},
+    connection::JetstreamConnection, handler, ingestion::LexiconIngestor,
+    options::JetstreamOptions, types::event::Event,
 };
-use tokio_tungstenite::{connect_async, tungstenite::Message};
-use url::Url;
+
+use serde_json::Value;
+use types::app::bsky::feed::Post;
 
 fn setup_tracing() {
     tracing_subscriber::fmt()
@@ -36,14 +33,14 @@ async fn main() {
 
     let (msg_tx, msg_rx) = unbounded();
 
-    let mut opts = JetstreamOptions::builder()
+    let opts = JetstreamOptions::builder()
         .wanted_collections(vec!["app.bsky.feed.post".to_string()])
         .build();
 
     let jetstream = JetstreamConnection::new(opts);
 
     let mut ingestors: HashMap<String, Box<dyn LexiconIngestor + Send + Sync>> = HashMap::new();
-    ingestors.insert("app.bsky.feed.post".to_string(), Box::new(LexiconPrinter));
+    ingestors.insert("app.bsky.feed.post".to_string(), Box::new(PostPrinter));
 
     // Spawn a task to process messages from the queue.
     tokio::spawn(async move {
@@ -60,13 +57,18 @@ async fn main() {
     }
 }
 
-pub struct LexiconPrinter;
+/// Example trait
+pub struct PostPrinter;
 
 #[async_trait::async_trait]
-impl LexiconIngestor for LexiconPrinter {
-    fn ingest(&self, message: &str) -> anyhow::Result<()> {
-        println!("Default lexicon processing: {}", message);
-        // Process message for default lexicon.
+impl LexiconIngestor for PostPrinter {
+    fn ingest(&self, message: Event<Value>) -> anyhow::Result<()> {
+        if let Some(record) = message.commit.record {
+            let json = serde_json::from_value::<types::app::bsky::feed::post::RecordData>(record)?;
+            println!("{}: {:?}", message.did, json.text);
+        } else {
+            println!("{}: Message {} deleted", message.did, message.commit.rkey)
+        }
         Ok(())
     }
 }

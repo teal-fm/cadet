@@ -247,10 +247,13 @@ dependencies = [
  "metrics-exporter-prometheus",
  "rand",
  "rocketman",
+ "serde",
+ "serde_json",
  "tokio",
  "tokio-tungstenite",
  "tracing",
  "tracing-subscriber",
+ "types",
  "url",
 ]
 

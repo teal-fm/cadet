@@ -37,6 +37,6 @@ impl Display for JetstreamEndpoints {
 
 impl Default for JetstreamEndpoints {
     fn default() -> Self {
-        Self::Public(JetstreamEndpointLocations::UsEast, 1)
+        Self::Public(JetstreamEndpointLocations::UsEast, 2)
     }
 }
