@@ -1,5 +1,5 @@
 [workspace]
-members = ["cadet", "rocketman", "types"]
+members = ["cadet", "rocketman", "satellite", "types"]
 resolver = "2"
 
 
@@ -10,7 +10,7 @@ cadet = { path = "./cadet" }
 rocketman = { path = "./rocketman" }
 # types library
 types = { path = "./types" }
-
+anyhow = "1"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "time"] }
 tokio-tungstenite = { version = "0.20", features = [
     "rustls-tls-native-roots",
@@ -26,3 +26,17 @@ tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 metrics = "0.24.1"
 async-trait = "0.1.86"
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "tls-rustls-ring-webpki",
+    "postgres",
+    "uuid",
+    "time",
+] }
+time = { version = "0.3.37", features = [
+    "formatting",
+    "macros",
+    "parsing",
+    "serde",
+] }
+dotenvy = "0.15.7"

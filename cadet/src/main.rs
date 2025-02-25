@@ -1,12 +1,18 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
+use cursor::load_cursor;
 use flume::unbounded;
 use metrics_exporter_prometheus::PrometheusBuilder;
+use tracing::error;
 
 use rocketman::{
     connection::JetstreamConnection, handler, ingestion::LexiconIngestor, options::JetstreamOptions,
 };
 
+mod cursor;
 mod db;
 mod ingestors;
 
@@ -19,7 +25,7 @@ fn setup_tracing() {
 fn setup_metrics() {
     // Initialize metrics here
     if let Err(e) = PrometheusBuilder::new().install() {
-        eprintln!(
+        error!(
             "Failed to install, program will run without Prometheus exporter: {}",
             e
         );
@@ -54,7 +60,7 @@ async fn main() {
 
     // tracks the last message we've processed
     // TODO: read from db/config so we can resume from where we left off in case of crash
-    let cursor: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+    let cursor: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(load_cursor().await));
 
     // Spawn a task to process messages from the queue.
     // bleh at this clone
@@ -62,13 +68,31 @@ async fn main() {
     tokio::spawn(async move {
         while let Ok(message) = msg_rx.recv_async().await {
             if let Err(e) = handler::handle_message(message, &ingestors, c_cursor.clone()).await {
-                eprintln!("Error processing message: {}", e);
+                error!("Error processing message: {}", e);
             };
         }
     });
 
-    if let Err(e) = jetstream.connect(msg_tx, cursor).await {
-        eprintln!("Failed to connect to Jetstream: {}", e);
+    // store cursor every so often
+    let c_cursor = cursor.clone();
+    tokio::spawn(async move {
+        let ceursor = c_cursor.clone();
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            let cursor_to_store: Option<String> = {
+                let cursor_guard = ceursor.lock().unwrap();
+                cursor_guard.clone()
+            };
+            if let Some(cursor) = cursor_to_store {
+                if let Err(e) = cursor::store_cursor(&cursor).await {
+                    error!("Error storing cursor: {}", e);
+                }
+            }
+        }
+    });
+
+    if let Err(e) = jetstream.connect(msg_tx, cursor.clone()).await {
+        error!("Failed to connect to Jetstream: {}", e);
         std::process::exit(1);
     }
 }

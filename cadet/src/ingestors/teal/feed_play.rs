@@ -43,16 +43,22 @@ impl PlayIngestor {
             let artist_name = artist.clone(); // Clone to move into the query
             if let Some(artist_mbid) = artist_mbid {
                 let artist_uuid = Uuid::parse_str(artist_mbid)?;
-                sqlx::query!(
+                let res = sqlx::query!(
                     r#"
                     INSERT INTO artists (mbid, name) VALUES ($1, $2)
-                    ON CONFLICT (mbid) DO NOTHING;
+                    ON CONFLICT (mbid) DO NOTHING
+                    RETURNING mbid;
                 "#,
                     artist_uuid,
                     artist_name
                 )
-                .execute(&self.sql)
+                .fetch_all(&self.sql)
                 .await?;
+
+                if res.len() > 0 {
+                    // TODO: send request to async scrape data from local MB instance
+                }
+
                 parsed_artists.push((artist_uuid, artist_name));
             }
         }
@@ -61,32 +67,42 @@ impl PlayIngestor {
         if let Some(release_mbid) = &play_record.release_mb_id {
             let release_name = play_record.release_name.clone(); // Clone for move
             let release_uuid = Uuid::parse_str(release_mbid).unwrap();
-            sqlx::query!(
+            let res = sqlx::query!(
                 r#"
                     INSERT INTO releases (mbid, name) VALUES ($1, $2)
-                    ON CONFLICT (mbid) DO NOTHING;
+                    ON CONFLICT (mbid) DO NOTHING
+                    RETURNING mbid;
                 "#,
                 release_uuid,
                 release_name
             )
-            .execute(&self.sql)
+            .fetch_all(&self.sql)
             .await?;
+
+            if res.len() > 0 {
+                // TODO: send request to async scrape data from local MB instance
+            }
         }
 
         // Insert recording if missing
         if let Some(recording_mbid) = &play_record.recording_mb_id {
             let recording_name = play_record.track_name.clone(); // Clone for move
             let recording_uuid = Uuid::parse_str(recording_mbid).unwrap();
-            sqlx::query!(
+            let res = sqlx::query!(
                 r#"
                     INSERT INTO recordings (mbid, name) VALUES ($1, $2)
-                    ON CONFLICT (mbid) DO NOTHING;
+                    ON CONFLICT (mbid) DO NOTHING
+                    RETURNING mbid;
                 "#,
                 recording_uuid,
                 recording_name
             )
-            .execute(&self.sql)
+            .fetch_all(&self.sql)
             .await?;
+
+            if res.len() > 0 {
+                // TODO: send request to async scrape data from local MB instance
+            }
         }
 
         let played_time = play_record.played_time.clone().unwrap_or(Datetime::now());
@@ -103,7 +119,17 @@ impl PlayIngestor {
                 ) VALUES (
                     $1, $2, $3, $4, $5, $6, $7, $8,
                     NOW(), $9, $10, $11, $12, $13
-                );
+                ) ON CONFLICT(uri, cid, did, rkey) DO UPDATE SET
+                    isrc = EXCLUDED.isrc,
+                    duration = EXCLUDED.duration,
+                    track_name = EXCLUDED.track_name,
+                    played_time = EXCLUDED.played_time,
+                    processed_time = EXCLUDED.processed_time,
+                    release_mbid = EXCLUDED.release_mbid,
+                    release_name = EXCLUDED.release_name,
+                    recording_mbid = EXCLUDED.recording_mbid,
+                    submission_client_agent = EXCLUDED.submission_client_agent,
+                    music_service_base_domain = EXCLUDED.music_service_base_domain;
             "#,
             uri,
             cid,
@@ -140,7 +166,7 @@ impl PlayIngestor {
             .await?;
         }
 
-        // Refresh materialized views concurrently (if needed, consider if this should be done after every play or less frequently)
+        // Refresh materialized views concurrently (if needed, consider if this should be done less frequently)
         // For now keeping it as is from the SQL script, but consider performance implications.
         sqlx::query!("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_artist_play_counts;")
             .execute(&self.sql)

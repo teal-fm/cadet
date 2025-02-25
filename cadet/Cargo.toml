@@ -12,20 +12,13 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 metrics.workspace = true
 metrics-exporter-prometheus = "0.16.2"
-anyhow = "1"
+anyhow.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 rocketman.workspace = true
 types.workspace = true
 flume.workspace = true
 async-trait.workspace = true
-
-sqlx = { version = "0.8", features = [
-    "runtime-tokio",
-    "tls-rustls-ring-webpki",
-    "postgres",
-    "uuid",
-    "time",
-] }
-time = { version = "0.3.37", features = ["formatting", "macros", "parsing", "serde"] }
-dotenvy = "0.15.7"
+sqlx.workspace = true
+time.workspace = true
+dotenvy.workspace = true
