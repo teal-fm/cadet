@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                        INSERT INTO play_to_artists (play_uri, artist_mbid, artist_name) VALUES\n                        ($1, $2, $3)\n                        ON CONFLICT (play_uri, artist_mbid) DO NOTHING;\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "aafd460ec18d8470cb5660a9c094aae62a33b534c8d21c20c1a92f777e8a46b8"
+}

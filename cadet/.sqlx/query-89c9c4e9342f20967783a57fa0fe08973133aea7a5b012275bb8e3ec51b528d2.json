@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM mv_release_play_counts;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "release_mbid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "release_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "play_count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "89c9c4e9342f20967783a57fa0fe08973133aea7a5b012275bb8e3ec51b528d2"
+}

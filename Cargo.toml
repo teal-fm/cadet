@@ -11,5 +11,18 @@ rocketman = { path = "./rocketman" }
 # types library
 types = { path = "./types" }
 
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "time"] }
+tokio-tungstenite = { version = "0.20", features = [
+    "rustls-tls-native-roots",
+    "rustls-tls-webpki-roots",
+] }
 serde = "1"
 serde_json = "1"
+flume = "0.11.1"
+futures-util = "0.3"
+url = "2.0"
+rand = "0.8"
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
+metrics = "0.24.1"
+async-trait = "0.1.86"

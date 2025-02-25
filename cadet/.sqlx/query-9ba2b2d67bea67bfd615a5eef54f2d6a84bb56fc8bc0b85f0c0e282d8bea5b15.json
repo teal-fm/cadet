@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "REFRESH MATERIALIZED VIEW CONCURRENTLY mv_global_play_count;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9ba2b2d67bea67bfd615a5eef54f2d6a84bb56fc8bc0b85f0c0e282d8bea5b15"
+}

@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM mv_recording_play_counts;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "recording_mbid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "recording_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "play_count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "4d4367332aa62c685fbdbdde48e999a5acf5acfe926644ed346ee930fe0be17c"
+}
