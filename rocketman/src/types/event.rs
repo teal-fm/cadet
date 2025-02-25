@@ -1,13 +1,47 @@
 use serde::{Deserialize, Deserializer, Serialize};
-use tokio_tungstenite::tungstenite::http::header::COOKIE;
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Kind {
+    Account,
+    Identity,
+    Commit,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Event<T> {
     pub did: String,
     pub time_us: Option<String>, // Using String to handle large u64 values safely
-    pub kind: String,
-    pub commit: Commit<T>,
+    pub kind: Kind,
+    pub commit: Option<Commit<T>>,
+    pub identity: Option<Identity>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Identity {
+    did: String,
+    handle: Option<String>,
+    seq: u64,
+    time: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum AccountStatus {
+    TakenDown,
+    Suspended,
+    Deleted,
+    Activated,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Account {
+    did: String,
+    handle: String,
+    seq: u64,
+    time: String,
+    status: AccountStatus,
 }
 
 #[derive(Debug, Serialize)]

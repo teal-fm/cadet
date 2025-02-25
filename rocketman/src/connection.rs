@@ -1,7 +1,8 @@
 // connection.rs
-use futures_util::{SinkExt, StreamExt};
+use futures_util::StreamExt;
 use metrics::{counter, describe_counter, describe_histogram, histogram, Unit};
 use std::cmp::{max, min};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tokio::time::{sleep, Duration};
 use tokio_tungstenite::{
@@ -24,6 +25,7 @@ impl JetstreamConnection {
     pub async fn connect(
         &self,
         msg_sender: flume::Sender<Result<Message, Error>>,
+        cursor: Arc<Mutex<Option<String>>>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         describe_counter!(
             "jetstream.connection.attempt",
@@ -43,7 +45,7 @@ impl JetstreamConnection {
         let mut retry_interval = 1;
 
         loop {
-            counter!("jetstream.connection.attempt");
+            counter!("jetstream.connection.attempt").increment(1);
             println!("Connecting to {}", self.opts.ws_url);
             let start = Instant::now();
 
@@ -60,7 +62,7 @@ impl JetstreamConnection {
                     url.query_pairs_mut().append_pair("wantedDids", did);
                 }
             }
-            if let Some(ref cursor) = self.opts.cursor {
+            if let Some(cursor) = cursor.lock().unwrap().as_ref() {
                 url.query_pairs_mut().append_pair("cursor", cursor);
             }
 
@@ -74,13 +76,14 @@ impl JetstreamConnection {
 
                     while let Some(message) = read.next().await {
                         histogram!("jetstream.connection.duration").record(elapsed.as_secs_f64());
+                        // extract us_ms
                         if let Err(err) = msg_sender.send_async(message).await {
                             eprintln!("Failed to queue message: {}", err);
                         }
                     }
                 }
                 Err(e) => {
-                    counter!("jetstream.connection.error");
+                    counter!("jetstream.connection.error").increment(1);
                     eprintln!("Connection error: {}", e);
                 }
             }
