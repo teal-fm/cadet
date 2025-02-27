@@ -5,6 +5,11 @@
     "columns": [
       {
         "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
         "name": "play_count",
         "type_info": "Int8"
       }
@@ -13,6 +18,7 @@
       "Left": []
     },
     "nullable": [
+      true,
       true
     ]
   },

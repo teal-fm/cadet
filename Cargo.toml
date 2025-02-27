@@ -4,8 +4,6 @@ resolver = "2"
 
 
 [workspace.dependencies]
-# main binary
-cadet = { path = "./cadet" }
 # jetstream library
 rocketman = { path = "./rocketman" }
 # types library

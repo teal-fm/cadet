@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    INSERT INTO recordings (mbid, name) VALUES ($1, $2)\n                    ON CONFLICT (mbid) DO NOTHING\n                    RETURNING mbid;\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "mbid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "35ab04574a5733740c481f525016c4acaf48cdc102e62399204ef4c840174c30"
+}
