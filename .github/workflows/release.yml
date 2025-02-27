@@ -30,7 +30,7 @@ jobs:
         run: |
           docker buildx build \
             --platform linux/amd64,linux/arm64 \ # Example platform, add more if needed
-            --build-arg BIN_NAME=cadet
+            --build-arg BIN_NAME=cadet \
             --tag ghcr.io/${{ github.repository_owner }}/cadet:${GITHUB_REF_NAME#refs/tags/v} \
             --push .
 
@@ -38,6 +38,6 @@ jobs:
         run: |
           docker buildx build \
             --platform linux/amd64,linux/arm64 \ # Example platform, add more if needed
-            --build-arg BIN_NAME=satellite
+            --build-arg BIN_NAME=satellite \
             --tag ghcr.io/${{ github.repository_owner }}/satellite:${GITHUB_REF_NAME#refs/tags/v} \
             --push .
