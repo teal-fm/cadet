@@ -13,7 +13,7 @@ pub enum Kind {
 #[serde(rename_all = "snake_case")]
 pub struct Event<T> {
     pub did: String,
-    pub time_us: Option<String>, // Using String to handle large u64 values safely
+    pub time_us: Option<u64>,
     pub kind: Kind,
     pub commit: Option<Commit<T>>,
     pub identity: Option<Identity>,

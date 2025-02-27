@@ -57,7 +57,7 @@ async fn main() {
 
     // tracks the last message we've processed
     // TODO: read from db/config so we can resume from where we left off in case of crash
-    let cursor: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(load_cursor().await));
+    let cursor: Arc<Mutex<Option<u64>>> = Arc::new(Mutex::new(load_cursor().await));
 
     // get channels
     let msg_rx = jetstream.get_msg_rx();
@@ -80,15 +80,14 @@ async fn main() {
     // store cursor every so often
     let c_cursor = cursor.clone();
     tokio::spawn(async move {
-        let ceursor = c_cursor.clone();
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-            let cursor_to_store: Option<String> = {
-                let cursor_guard = ceursor.lock().unwrap();
+            let cursor_to_store: Option<u64> = {
+                let cursor_guard = c_cursor.lock().unwrap();
                 cursor_guard.clone()
             };
             if let Some(cursor) = cursor_to_store {
-                if let Err(e) = cursor::store_cursor(&cursor).await {
+                if let Err(e) = cursor::store_cursor(cursor).await {
                     error!("Error storing cursor: {}", e);
                 }
             }

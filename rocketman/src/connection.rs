@@ -40,7 +40,7 @@ impl JetstreamConnection {
         self.msg_rx.clone()
     }
 
-    fn build_ws_url(&self, cursor: Arc<Mutex<Option<String>>>) -> String {
+    fn build_ws_url(&self, cursor: Arc<Mutex<Option<u64>>>) -> String {
         let mut url = Url::parse(&self.opts.ws_url.to_string()).unwrap();
 
         // Append query params
@@ -55,7 +55,8 @@ impl JetstreamConnection {
             }
         }
         if let Some(cursor) = cursor.lock().unwrap().as_ref() {
-            url.query_pairs_mut().append_pair("cursor", cursor);
+            url.query_pairs_mut()
+                .append_pair("cursor", &cursor.to_string());
         }
 
         url.to_string()
@@ -63,7 +64,7 @@ impl JetstreamConnection {
 
     pub async fn connect(
         &self,
-        cursor: Arc<Mutex<Option<String>>>,
+        cursor: Arc<Mutex<Option<u64>>>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         describe_counter!(
             "jetstream.connection.attempt",
@@ -174,12 +175,12 @@ mod tests {
         };
         let connection = JetstreamConnection::new(opts);
 
-        let test = Arc::new(Mutex::new(Some("test".to_string())));
+        let test = Arc::new(Mutex::new(Some(8373)));
 
         let url = connection.build_ws_url(test);
 
         assert!(url.starts_with("wss://"));
-        assert!(url.contains("cursor=test"));
+        assert!(url.contains("cursor=8373"));
         assert!(url.contains("wantedCollections=col1"));
         assert!(url.contains("wantedCollections=col2"));
         assert!(url.contains("wantedDids=did1"));

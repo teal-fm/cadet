@@ -17,7 +17,7 @@ pub async fn handle_message(
     message: Message,
     ingestors: &HashMap<String, Box<dyn LexiconIngestor + Send + Sync>>,
     reconnect_tx: Sender<()>,
-    cursor: Arc<Mutex<Option<String>>>,
+    cursor: Arc<Mutex<Option<u64>>>,
 ) -> Result<()> {
     describe_counter!(
         "jetstream.event",
@@ -170,13 +170,13 @@ mod tests {
     #[tokio::test]
     async fn test_valid_commit_success() {
         let (reconnect_tx, _reconnect_rx) = setup_reconnect_channel();
-        let cursor = Arc::new(Mutex::new(Some("100".to_string())));
+        let cursor = Arc::new(Mutex::new(Some(100)));
         let called_flag = Arc::new(Mutex::new(false));
 
         // Create a valid commit event JSON.
         let event_json = json!({
             "did": "did:example:123",
-            "time_us": "200",
+            "time_us": 200,
             "kind": "commit",
             "commit": {
                 "rev": "1",
@@ -211,18 +211,18 @@ mod tests {
         // Check that the ingestor was called.
         assert!(*called_flag.lock().unwrap());
         // Verify that the cursor got updated.
-        assert_eq!(*cursor.lock().unwrap(), Some("200".to_string()));
+        assert_eq!(*cursor.lock().unwrap(), Some(200));
     }
 
     #[tokio::test]
     async fn test_commit_ingest_failure() {
         let (reconnect_tx, _reconnect_rx) = setup_reconnect_channel();
-        let cursor = Arc::new(Mutex::new(Some("100".to_string())));
+        let cursor = Arc::new(Mutex::new(Some(100)));
 
         // Valid commit event with an ingestor that fails.
         let event_json = json!({
             "did": "did:example:123",
-            "time_us": "300",
+            "time_us": 300,
             "kind": "commit",
             "commit": {
                 "rev": "1",
@@ -252,7 +252,7 @@ mod tests {
         .await;
         assert!(result.is_ok());
         // Cursor should still update because it comes before the ingest call.
-        assert_eq!(*cursor.lock().unwrap(), Some("300".to_string()));
+        assert_eq!(*cursor.lock().unwrap(), Some(300));
     }
 
     #[tokio::test]
@@ -262,7 +262,7 @@ mod tests {
         // Valid identity event.
         let event_json = json!({
             "did": "did:example:123",
-            "time_us": "150",
+            "time_us": 150,
             "kind": "identity",
             "commit": null,
             "identity": {
@@ -335,10 +335,10 @@ mod tests {
     async fn test_cursor_not_updated_if_lower() {
         let (reconnect_tx, _reconnect_rx) = setup_reconnect_channel();
         // Set an initial cursor value.
-        let cursor = Arc::new(Mutex::new(Some("300".to_string())));
+        let cursor = Arc::new(Mutex::new(Some(300)));
         let event_json = json!({
             "did": "did:example:123",
-            "timeUs": "200",
+            "time_us": 200,
             "kind": "commit",
             "commit": {
                 "rev": "1",
@@ -373,6 +373,6 @@ mod tests {
         .await;
         assert!(result.is_ok());
         // Cursor should remain unchanged.
-        assert_eq!(*cursor.lock().unwrap(), Some("300".to_string()));
+        assert_eq!(*cursor.lock().unwrap(), Some(300));
     }
 }
