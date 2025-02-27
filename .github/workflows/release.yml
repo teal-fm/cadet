@@ -29,7 +29,7 @@ jobs:
       - name: Docker Buildx Cadet Image
         run: |
           docker buildx build \
-            --platform linux/amd64,linux/arm64 \ # Example platform, add more if needed
+            --platform linux/amd64,linux/arm64 \
             --build-arg BIN_NAME=cadet \
             --tag ghcr.io/${{ github.repository_owner }}/cadet:${GITHUB_REF_NAME#refs/tags/v} \
             --push .
@@ -37,7 +37,7 @@ jobs:
       - name: Docker Buildx Satellite Image
         run: |
           docker buildx build \
-            --platform linux/amd64,linux/arm64 \ # Example platform, add more if needed
+            --platform linux/amd64,linux/arm64 \
             --build-arg BIN_NAME=satellite \
             --tag ghcr.io/${{ github.repository_owner }}/satellite:${GITHUB_REF_NAME#refs/tags/v} \
             --push .
