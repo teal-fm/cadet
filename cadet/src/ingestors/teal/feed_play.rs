@@ -64,7 +64,7 @@ impl PlayIngestor {
         }
 
         // Insert release if missing
-        if let Some(release_mbid) = &play_record.release_mb_id {
+        let release_mbid = if let Some(release_mbid) = &play_record.release_mb_id {
             let release_name = play_record.release_name.clone(); // Clone for move
             let release_uuid = Uuid::parse_str(release_mbid).unwrap();
             let res = sqlx::query!(
@@ -82,10 +82,13 @@ impl PlayIngestor {
             if res.len() > 0 {
                 // TODO: send request to async scrape data from local MB instance
             }
-        }
+            Some(release_uuid.clone())
+        } else {
+            None
+        };
 
         // Insert recording if missing
-        if let Some(recording_mbid) = &play_record.recording_mb_id {
+        let recording_mbid = if let Some(recording_mbid) = &play_record.recording_mb_id {
             let recording_name = play_record.track_name.clone(); // Clone for move
             let recording_uuid = Uuid::parse_str(recording_mbid).unwrap();
             let res = sqlx::query!(
@@ -103,7 +106,10 @@ impl PlayIngestor {
             if res.len() > 0 {
                 // TODO: send request to async scrape data from local MB instance
             }
-        }
+            Some(recording_uuid.clone())
+        } else {
+            None
+        };
 
         let played_time = play_record.played_time.clone().unwrap_or(Datetime::now());
         let played_time_odt =
@@ -139,9 +145,9 @@ impl PlayIngestor {
             play_record.duration.map(|d| d as i32),
             play_record.track_name,
             played_time_odt,
-            play_record.release_mb_id,
+            release_mbid.clone(),
             play_record.release_name,
-            play_record.recording_mb_id,
+            recording_mbid.clone(),
             play_record.submission_client_agent,
             play_record.music_service_base_domain,
         )

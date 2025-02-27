@@ -6,6 +6,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use uuid::Uuid;
 
 use crate::AppState;
 
@@ -46,9 +47,9 @@ pub struct LatestPlayQueryParams {
 pub struct Play {
     pub did: String,
     pub track_name: String,
-    pub recording_mbid: Option<String>,
+    pub recording_mbid: Option<Uuid>,
     pub release_name: Option<String>,
-    pub release_mbid: Option<String>,
+    pub release_mbid: Option<Uuid>,
     pub duration: Option<i32>,
     pub played_time: Option<OffsetDateTime>,
     pub uri: Option<String>,
@@ -60,9 +61,9 @@ pub struct Play {
 pub struct PlayReturn {
     pub did: String,
     pub track_name: String,
-    pub recording_mbid: Option<String>,
+    pub recording_mbid: Option<Uuid>,
     pub release_name: Option<String>,
-    pub release_mbid: Option<String>,
+    pub release_mbid: Option<Uuid>,
     pub duration: Option<i32>,
     pub played_time: Option<String>,
     pub uri: Option<String>,
@@ -72,7 +73,7 @@ pub struct PlayReturn {
 #[derive(sqlx::Type, Debug, Deserialize, Serialize)]
 pub struct Artist {
     pub artist_name: String,
-    pub artist_mbid: Option<String>,
+    pub artist_mbid: Option<Uuid>,
 }
 
 pub async fn get_latest_plays(
@@ -124,7 +125,10 @@ pub async fn get_latest_plays(
                                     .next()
                                     .expect("Artist name is required")
                                     .to_string(),
-                                artist_mbid: parts.next().map(|mbid| mbid.to_string()),
+                                artist_mbid: parts
+                                    .next()
+                                    .map(|mbid| Uuid::parse_str(mbid).ok())
+                                    .flatten(),
                             }
                         })
                         .collect();
