@@ -78,7 +78,7 @@ COPY --from=buildah /etc/group /etc/group
 WORKDIR /app
 
 # set which executable to copy over based on BIN_NAME
-COPY --from=buildah /buildah/target$BIN_NAME ./bin
+COPY --from=buildah /buildah/target/$BIN_NAME ./bin
 
 # Use an unprivileged user.
 USER app:app
