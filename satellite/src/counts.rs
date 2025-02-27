@@ -88,6 +88,7 @@ pub async fn get_latest_plays(
             SELECT
                 p.did,
                 p.track_name,
+                -- TODO: replace with actual
                 STRING_AGG(pa.artist_name || '|' || TEXT(pa.artist_mbid), ',') AS artists,
                 p.release_name,
                 p.played_time,

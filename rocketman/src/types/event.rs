@@ -6,10 +6,11 @@ pub enum Kind {
     Account,
     Identity,
     Commit,
+    Unknown(String),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct Event<T> {
     pub did: String,
     pub time_us: Option<String>, // Using String to handle large u64 values safely

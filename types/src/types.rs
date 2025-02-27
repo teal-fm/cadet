@@ -156,7 +156,7 @@ pub struct UnknownData {
 /// that implements [`DeserializeOwned`](serde::de::DeserializeOwned).
 ///
 /// ```
-/// use atrium_api::types::{TryFromUnknown, Unknown};
+/// use ::types::types::{TryFromUnknown, Unknown};
 ///
 /// #[derive(Debug, serde::Deserialize)]
 /// struct Foo {

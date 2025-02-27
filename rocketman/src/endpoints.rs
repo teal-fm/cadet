@@ -40,3 +40,23 @@ impl Default for JetstreamEndpoints {
         Self::Public(JetstreamEndpointLocations::UsEast, 2)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_display_public() {
+        let endpoint = JetstreamEndpoints::Public(JetstreamEndpointLocations::UsEast, 2);
+        assert_eq!(
+            endpoint.to_string(),
+            "wss://jetstream2.us-east.bsky.network/subscribe"
+        );
+    }
+
+    #[test]
+    fn test_display_custom() {
+        let endpoint = JetstreamEndpoints::Custom("wss://custom.bsky.network/subscribe".into());
+        assert_eq!(endpoint.to_string(), "wss://custom.bsky.network/subscribe");
+    }
+}
