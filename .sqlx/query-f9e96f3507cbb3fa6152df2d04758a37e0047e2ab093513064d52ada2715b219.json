@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                p.did,\n                p.track_name,\n                STRING_AGG(pa.artist_name || '|' || TEXT(pa.artist_mbid), ',') AS artists,\n                p.release_name,\n                p.played_time,\n                p.duration,\n                p.uri,\n                p.recording_mbid,\n                p.release_mbid\n\n            FROM plays AS p\n            LEFT JOIN play_to_artists AS pa ON pa.play_uri = p.uri\n            GROUP BY p.did, p.track_name, p.release_name, p.played_time, p.duration, p.uri, p.recording_mbid, p.release_mbid\n            ORDER BY p.played_time DESC\n            LIMIT $1\n        ",
+  "query": "\n            SELECT\n                p.did,\n                p.track_name,\n                -- TODO: replace with actual\n                STRING_AGG(pa.artist_name || '|' || TEXT(pa.artist_mbid), ',') AS artists,\n                p.release_name,\n                p.played_time,\n                p.duration,\n                p.uri,\n                p.recording_mbid,\n                p.release_mbid\n\n            FROM plays AS p\n            LEFT JOIN play_to_artists AS pa ON pa.play_uri = p.uri\n            GROUP BY p.did, p.track_name, p.release_name, p.played_time, p.duration, p.uri, p.recording_mbid, p.release_mbid\n            ORDER BY p.played_time DESC\n            LIMIT $1\n        ",
   "describe": {
     "columns": [
       {
@@ -41,12 +41,12 @@
       {
         "ordinal": 7,
         "name": "recording_mbid",
-        "type_info": "Text"
+        "type_info": "Uuid"
       },
       {
         "ordinal": 8,
         "name": "release_mbid",
-        "type_info": "Text"
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
@@ -61,10 +61,10 @@
       true,
       true,
       true,
-      true,
+      false,
       true,
       true
     ]
   },
-  "hash": "87b75704f775648ae72141c98c9433893c3969902226af12986b1d92e1916e4a"
+  "hash": "f9e96f3507cbb3fa6152df2d04758a37e0047e2ab093513064d52ada2715b219"
 }

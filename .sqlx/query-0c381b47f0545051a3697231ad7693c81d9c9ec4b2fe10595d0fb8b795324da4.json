@@ -13,9 +13,9 @@
         "Int4",
         "Text",
         "Timestamptz",
+        "Uuid",
         "Text",
-        "Text",
-        "Text",
+        "Uuid",
         "Text",
         "Text"
       ]
