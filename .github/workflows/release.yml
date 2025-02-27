@@ -32,9 +32,8 @@ jobs:
             --platform linux/amd64,linux/arm64 \ # Example platform, add more if needed
             --build-arg BIN_NAME=cadet
             --tag ghcr.io/${{ github.repository_owner }}/cadet:${GITHUB_REF_NAME#refs/tags/v} \
-            --file cadet/Dockerfile \
             --push # Push directly to registry (no need for separate push step later) \
-            cadet/target/release/cadet
+            .
           echo "::notice title=Docker Image Built and Pushed::Cadet image ghcr.io/${{ github.repository_owner }}/cadet:${GITHUB_REF_NAME#refs/tags/v} built and pushed with buildx successfully."
 
       - name: Docker Buildx Satellite Image
@@ -43,7 +42,6 @@ jobs:
             --platform linux/amd64,linux/arm64 \ # Example platform, add more if needed
             --build-arg BIN_NAME=satellite
             --tag ghcr.io/${{ github.repository_owner }}/satellite:${GITHUB_REF_NAME#refs/tags/v} \
-            --file satellite/Dockerfile \
-            --push # Push directly to registry (no need for separate push step later) \
-            satellite/target/release/satellite
+            --push
+            .
           echo "::notice title=Docker Image Built and Pushed::Satellite image ghcr.io/${{ github.repository_owner }}/satellite:${GITHUB_REF_NAME#refs/tags/v} built and pushed with buildx successfully."
