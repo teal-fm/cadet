@@ -83,4 +83,4 @@ COPY --from=buildah /buildah/$BIN_NAME ./$BIN_NAME
 # Use an unprivileged user.
 USER app:app
 
-CMD ["ls"]
+CMD ["./$BIN_NAME"]
