@@ -7,6 +7,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tokio_tungstenite::tungstenite::{Error, Message};
+use tracing::{debug, error, info};
 
 use crate::{
     ingestion::LexiconIngestor,
@@ -39,20 +40,18 @@ pub async fn handle_message(
         Message::Text(text) => {
             counter!("jetstream.event").increment(1);
 
-            println!("Cursor");
-
             let envelope: Event<Value> = serde_json::from_str(&text).map_err(|e| {
                 anyhow::anyhow!("Failed to parse message: {} with json string {}", e, text)
             })?;
 
-            println!("envelope: {:?}", envelope);
+            debug!("envelope: {:?}", envelope);
 
             if let Some(ref time_us) = envelope.time_us {
-                println!("Time: {}", time_us);
+                debug!("Time: {}", time_us);
                 if let Some(cursor) = cursor.lock().unwrap().as_mut() {
-                    println!("Cursor: {}", cursor);
+                    debug!("Cursor: {}", cursor);
                     if time_us > cursor {
-                        println!("Cursor is behind, resetting");
+                        debug!("Cursor is behind, resetting");
                         *cursor = time_us.clone();
                     }
                 }
@@ -66,14 +65,14 @@ pub async fn handle_message(
                                 Ok(_) => counter!("jetstream.event.parse.commit", "nsid" => nsid)
                                     .increment(1),
                                 Err(e) => {
-                                    println!("{}", e);
+                                    error!("Error parsing commit: {}", e);
                                     counter!("jetstream.error").increment(1);
                                     counter!("jetstream.event.fail").increment(1);
                                 }
                             }
                         }
                     }
-                    Err(e) => println!("{}", e),
+                    Err(e) => error!("Error parsing commit: {}", e),
                 },
                 Kind::Identity => {
                     counter!("jetstream.event.parse.identity").increment(1);
@@ -88,14 +87,14 @@ pub async fn handle_message(
             Ok(())
         }
         Message::Binary(_) => {
-            println!("Binary message received");
+            debug!("Binary message received");
             Ok(())
         }
         Message::Close(_) => {
-            println!("Server closed connection");
+            debug!("Server closed connection");
             if let Err(e) = reconnect_tx.send(()) {
                 counter!("jetstream.event.parse.error", "error" => "failed_to_send_reconnect_signal").increment(1);
-                println!("Failed to send reconnect signal: {}", e);
+                error!("Failed to send reconnect signal: {}", e);
             }
             Err(Error::ConnectionClosed.into())
         }

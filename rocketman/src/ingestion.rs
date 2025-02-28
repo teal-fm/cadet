@@ -1,6 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
+use tracing::info;
 
 use crate::types::event::Event;
 
@@ -14,7 +15,7 @@ pub struct DefaultLexiconIngestor;
 #[async_trait]
 impl LexiconIngestor for DefaultLexiconIngestor {
     async fn ingest(&self, message: Event<Value>) -> Result<()> {
-        println!("Default lexicon processing: {:?}", message);
+        info!("Default lexicon processing: {:?}", message);
         // Process message for default lexicon.
         Ok(())
     }

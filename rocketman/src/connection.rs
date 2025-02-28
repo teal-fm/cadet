@@ -141,7 +141,7 @@ impl JetstreamConnection {
                 }
                 Err(e) => {
                     counter!("jetstream.connection.error").increment(1);
-                    eprintln!("Connection error: {}", e);
+                    error!("Connection error: {}", e);
                 }
             }
 
