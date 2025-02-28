@@ -125,7 +125,7 @@ impl PlayIngestor {
                 ) VALUES (
                     $1, $2, $3, $4, $5, $6, $7, $8,
                     NOW(), $9, $10, $11, $12, $13
-                ) ON CONFLICT(uri, cid, did, rkey) DO UPDATE SET
+                ) ON CONFLICT(uri) DO UPDATE SET
                     isrc = EXCLUDED.isrc,
                     duration = EXCLUDED.duration,
                     track_name = EXCLUDED.track_name,
@@ -194,24 +194,34 @@ impl PlayIngestor {
             let artist_counts = sqlx::query!("SELECT * FROM mv_artist_play_counts;")
                 .fetch_all(&self.sql)
                 .await?;
-            println!("mv_artist_play_counts: {:?}", artist_counts);
+            dbg!("mv_artist_play_counts: {:?}", artist_counts);
 
             let release_counts = sqlx::query!("SELECT * FROM mv_release_play_counts;")
                 .fetch_all(&self.sql)
                 .await?;
-            println!("mv_release_play_counts: {:?}", release_counts);
+            dbg!("mv_release_play_counts: {:?}", release_counts);
 
             let recording_counts = sqlx::query!("SELECT * FROM mv_recording_play_counts;")
                 .fetch_all(&self.sql)
                 .await?;
-            println!("mv_recording_play_counts: {:?}", recording_counts);
+            dbg!("mv_recording_play_counts: {:?}", recording_counts);
 
             let global_count = sqlx::query!("SELECT * FROM mv_global_play_count;")
                 .fetch_all(&self.sql)
                 .await?;
-            println!("mv_global_play_count: {:?}", global_count);
+            dbg!("mv_global_play_count: {:?}", global_count);
         }
 
+        Ok(())
+    }
+
+    async fn remove_play(&self, uri: &str) -> Result<(), sqlx::Error> {
+        sqlx::query!("DELETE FROM play_to_artists WHERE play_uri = $1", uri)
+            .execute(&self.sql)
+            .await?;
+        sqlx::query!("DELETE FROM plays WHERE uri = $1", uri)
+            .execute(&self.sql)
+            .await?;
         Ok(())
     }
 }
@@ -239,12 +249,6 @@ impl LexiconIngestor for PlayIngestor {
                 let play_record = serde_json::from_value::<
                     types::fm::teal::alpha::feed::play::RecordData,
                 >(record.clone())?;
-                println!(
-                    "{} played {} by {}",
-                    message.did,
-                    play_record.track_name,
-                    play_record.artist_names.join(", ")
-                );
                 if let Some(ref commit) = message.commit {
                     if let Some(ref cid) = commit.cid {
                         // TODO: verify cid
@@ -259,7 +263,8 @@ impl LexiconIngestor for PlayIngestor {
                     }
                 }
             } else {
-                println!("{}: Message {} deleted", message.did, commit.rkey)
+                println!("{}: Message {} deleted", message.did, commit.rkey);
+                self.remove_play(&message.did).await?;
             }
         } else {
             return Err(anyhow!("Message has no commit"));
