@@ -7,7 +7,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tokio_tungstenite::tungstenite::{Error, Message};
-use tracing::{debug, error, info};
+use tracing::{debug, error};
 
 use crate::{
     ingestion::LexiconIngestor,
