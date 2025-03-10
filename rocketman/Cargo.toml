@@ -7,7 +7,7 @@ license = "MIT"
 authors = ["Natalie B. <nat@natalie.sh>"]
 repository = "https://github.com/espeon/cadet"
 
-readme = "README.md"
+readme = "readme.md"
 
 description = "A modular(ish) jetstream consumer."
 
