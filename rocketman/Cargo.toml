@@ -7,6 +7,8 @@ license = "MIT"
 authors = ["Natalie B. <nat@natalie.sh>"]
 repository = "https://github.com/espeon/cadet"
 
+description = "A modular(ish) jetstream consumer."
+
 [dependencies]
 tokio.workspace = true
 tokio-tungstenite.workspace = true
