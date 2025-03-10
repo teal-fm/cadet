@@ -125,7 +125,7 @@ impl JetstreamConnection {
                                     }
                                     None => {
                                         info!("Stream closed by server.");
-                                        // technically this should be a 'break' but it results in a reconnect
+                                        // technically this should be a 'connection.break' but it results in a reconnect
                                         counter!("jetstream.connection.reconnect").increment(1);
                                         break; // Stream ended, break inner loop to reconnect
                                     }

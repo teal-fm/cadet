@@ -3,6 +3,10 @@ name = "rocketman"
 version = "0.1.0"
 edition = "2021"
 
+license = "MIT"
+authors = ["Natalie B. <nat@natalie.sh>"]
+repository = "https://github.com/espeon/cadet"
+
 [dependencies]
 tokio.workspace = true
 tokio-tungstenite.workspace = true
