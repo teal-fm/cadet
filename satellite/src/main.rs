@@ -5,10 +5,10 @@ use sqlx::{Pool, Postgres};
 use tokio_cron_scheduler::{Job, JobScheduler};
 use tracing::info;
 
+mod actor;
 mod counts;
 mod db;
 mod refresh;
-
 #[derive(Clone)]
 pub struct AppState {
     pub db_pool: Pool<Postgres>,
@@ -48,8 +48,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = axum::Router::new()
         .route("/", axum::routing::get(|| async { "Hello, world!" }))
-        .route("/count", axum::routing::get(counts::get_global_play_count))
-        .route("/latest", axum::routing::get(counts::get_latest_plays))
+        .route(
+            "/play/count",
+            axum::routing::get(counts::get_global_play_count),
+        )
+        .route("/play/latest", axum::routing::get(counts::get_latest_plays))
+        .route("/actor/count", axum::routing::get(actor::get_total_users))
+        .route(
+            "/actor/latest",
+            axum::routing::get(actor::get_latest_signups),
+        )
         .with_state(AppState { db_pool: db })
         .into_make_service();
 

@@ -5,12 +5,12 @@
     "columns": [
       {
         "ordinal": 0,
-        "name": "release_mbid",
+        "name": "mbid",
         "type_info": "Uuid"
       },
       {
         "ordinal": 1,
-        "name": "release_name",
+        "name": "name",
         "type_info": "Text"
       },
       {

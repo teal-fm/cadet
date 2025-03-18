@@ -14,6 +14,7 @@ use rocketman::{
 mod cursor;
 mod db;
 mod ingestors;
+mod resolve;
 
 fn setup_tracing() {
     tracing_subscriber::fmt()
@@ -43,7 +44,12 @@ async fn main() {
         .expect("Could not get PostgreSQL pool");
 
     let opts = JetstreamOptions::builder()
-        .wanted_collections(vec!["fm.teal.alpha.feed.play".to_string()])
+        .wanted_collections(
+            vec!["fm.teal.alpha.feed.play", "fm.teal.alpha.actor.profile"]
+                .iter()
+                .map(|collection| collection.to_string())
+                .collect(),
+        )
         .build();
 
     let jetstream = JetstreamConnection::new(opts);
@@ -52,7 +58,14 @@ async fn main() {
 
     ingestors.insert(
         "fm.teal.alpha.feed.play".to_string(),
-        Box::new(ingestors::teal::feed_play::PlayIngestor::new(pool)),
+        Box::new(ingestors::teal::feed_play::PlayIngestor::new(pool.clone())),
+    );
+
+    ingestors.insert(
+        "fm.teal.alpha.actor.profile".to_string(),
+        Box::new(ingestors::teal::actor_profile::ActorProfileIngestor::new(
+            pool.clone(),
+        )),
     );
 
     // tracks the last message we've processed

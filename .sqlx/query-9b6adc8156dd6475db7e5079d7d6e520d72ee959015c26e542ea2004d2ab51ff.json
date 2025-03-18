@@ -5,12 +5,12 @@
     "columns": [
       {
         "ordinal": 0,
-        "name": "artist_mbid",
+        "name": "mbid",
         "type_info": "Uuid"
       },
       {
         "ordinal": 1,
-        "name": "artist_name",
+        "name": "name",
         "type_info": "Text"
       },
       {

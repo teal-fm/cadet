@@ -5,12 +5,12 @@
     "columns": [
       {
         "ordinal": 0,
-        "name": "recording_mbid",
+        "name": "mbid",
         "type_info": "Uuid"
       },
       {
         "ordinal": 1,
-        "name": "recording_name",
+        "name": "name",
         "type_info": "Text"
       },
       {

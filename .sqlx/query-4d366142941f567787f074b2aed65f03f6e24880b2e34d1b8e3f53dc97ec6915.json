@@ -5,12 +5,12 @@
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
-        "type_info": "Int4"
+        "name": "total_plays",
+        "type_info": "Int8"
       },
       {
         "ordinal": 1,
-        "name": "play_count",
+        "name": "unique_listeners",
         "type_info": "Int8"
       }
     ],
