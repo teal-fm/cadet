@@ -45,10 +45,14 @@ async fn main() {
 
     let opts = JetstreamOptions::builder()
         .wanted_collections(
-            vec!["fm.teal.alpha.feed.play", "fm.teal.alpha.actor.profile"]
-                .iter()
-                .map(|collection| collection.to_string())
-                .collect(),
+            vec![
+                "fm.teal.alpha.feed.play",
+                "fm.teal.alpha.actor.profile",
+                "app.bsky.feed.post",
+            ]
+            .iter()
+            .map(|collection| collection.to_string())
+            .collect(),
         )
         .build();
 
