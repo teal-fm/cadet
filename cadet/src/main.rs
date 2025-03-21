@@ -8,7 +8,10 @@ use metrics_exporter_prometheus::PrometheusBuilder;
 use tracing::error;
 
 use rocketman::{
-    connection::JetstreamConnection, handler, ingestion::LexiconIngestor, options::JetstreamOptions,
+    connection::JetstreamConnection,
+    handler,
+    ingestion::{DefaultLexiconIngestor, LexiconIngestor},
+    options::JetstreamOptions,
 };
 
 mod cursor;
@@ -70,6 +73,11 @@ async fn main() {
         Box::new(ingestors::teal::actor_profile::ActorProfileIngestor::new(
             pool.clone(),
         )),
+    );
+
+    ingestors.insert(
+        "app.bsky.feed.post".to_string(),
+        Box::new(DefaultLexiconIngestor),
     );
 
     // tracks the last message we've processed
