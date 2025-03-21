@@ -146,12 +146,12 @@ pub async fn resolve_identity(
         todo!("Error for could not find PDS")
     }
 
-    return Ok(ResolvedIdentity {
+    Ok(ResolvedIdentity {
         did: did.to_owned(),
         doc,
         identity: id.to_owned(),
         pds: pds.unwrap().service_endpoint,
-    });
+    })
 }
 
 // want this to be reusable on case of scope expansion :(

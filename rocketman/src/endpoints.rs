@@ -6,12 +6,16 @@ pub enum JetstreamEndpointLocations {
     UsWest,
 }
 
-impl ToString for JetstreamEndpointLocations {
-    fn to_string(&self) -> String {
-        match self {
-            Self::UsEast => "us-east".into(),
-            Self::UsWest => "us-west".into(),
-        }
+impl Display for JetstreamEndpointLocations {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::UsEast => "us-east",
+                Self::UsWest => "us-west",
+            }
+        )
     }
 }
 
@@ -27,8 +31,7 @@ impl Display for JetstreamEndpoints {
             Self::Public(location, id) => write!(
                 f,
                 "wss://jetstream{}.{}.bsky.network/subscribe",
-                id,
-                location.to_string()
+                id, location
             ),
             Self::Custom(url) => write!(f, "{}", url),
         }

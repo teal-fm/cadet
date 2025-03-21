@@ -45,7 +45,7 @@ async fn main() {
 
     let opts = JetstreamOptions::builder()
         .wanted_collections(
-            vec![
+            [
                 "fm.teal.alpha.feed.play",
                 "fm.teal.alpha.actor.profile",
                 "app.bsky.feed.post",
@@ -101,7 +101,7 @@ async fn main() {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
             let cursor_to_store: Option<u64> = {
                 let cursor_guard = c_cursor.lock().unwrap();
-                cursor_guard.clone()
+                *cursor_guard
             };
             if let Some(cursor) = cursor_to_store {
                 if let Err(e) = cursor::store_cursor(cursor).await {

@@ -164,7 +164,7 @@ impl JetstreamConnection {
             if retry_interval > self.opts.max_retry_interval_seconds {
                 retry_interval = self.opts.max_retry_interval_seconds;
             } else {
-                retry_interval = retry_interval * 2;
+                retry_interval *= 2;
             }
         }
     }

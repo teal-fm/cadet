@@ -57,7 +57,7 @@ impl PlayIngestor {
                 .fetch_all(&self.sql)
                 .await?;
 
-                if res.len() > 0 {
+                if !res.is_empty() {
                     // TODO: send request to async scrape data from local MB instance
                 }
 
@@ -81,10 +81,10 @@ impl PlayIngestor {
             .fetch_all(&self.sql)
             .await?;
 
-            if res.len() > 0 {
+            if !res.is_empty() {
                 // TODO: send request to async scrape data from local MB instance
             }
-            Some(release_uuid.clone())
+            Some(release_uuid)
         } else {
             None
         };
@@ -105,10 +105,10 @@ impl PlayIngestor {
             .fetch_all(&self.sql)
             .await?;
 
-            if res.len() > 0 {
+            if !res.is_empty() {
                 // TODO: send request to async scrape data from local MB instance
             }
-            Some(recording_uuid.clone())
+            Some(recording_uuid)
         } else {
             None
         };
@@ -242,7 +242,7 @@ impl LexiconIngestor for PlayIngestor {
                         self.insert_play(
                             &play_record,
                             &assemble_at_uri(&message.did, &commit.collection, &commit.rkey),
-                            &cid,
+                            cid,
                             &message.did,
                             &commit.rkey,
                         )
