@@ -127,8 +127,7 @@ pub async fn get_latest_plays(
                                     .to_string(),
                                 artist_mbid: parts
                                     .next()
-                                    .map(|mbid| Uuid::parse_str(mbid).ok())
-                                    .flatten(),
+                                    .and_then(|mbid| Uuid::parse_str(mbid).ok()),
                             }
                         })
                         .collect();
@@ -146,7 +145,6 @@ pub async fn get_latest_plays(
                         artists,
                     }
                 })
-                .into_iter()
                 .collect();
 
             Ok(Json(fin))

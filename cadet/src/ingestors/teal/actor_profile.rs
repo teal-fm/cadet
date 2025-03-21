@@ -13,7 +13,7 @@ pub struct ActorProfileIngestor {
 }
 
 fn get_blob_ref(blob_ref: &types::types::BlobRef) -> anyhow::Result<String> {
-    let bref = match blob_ref {
+    match blob_ref {
         types::types::BlobRef::Typed(r) => match r {
             types::types::TypedBlobRef::Blob(blob) => {
                 // Use into_v1() to get the CID v1, then convert to Base32 (bafy...)
@@ -24,10 +24,9 @@ fn get_blob_ref(blob_ref: &types::types::BlobRef) -> anyhow::Result<String> {
             }
         },
         types::types::BlobRef::Untyped(_) => {
-            return Err(anyhow::anyhow!("Untyped blob reference not supported"))
+            Err(anyhow::anyhow!("Untyped blob reference not supported"))
         }
-    };
-    bref
+    }
 }
 
 impl ActorProfileIngestor {
@@ -53,13 +52,11 @@ impl ActorProfileIngestor {
         let avatar = profile
             .avatar
             .clone()
-            .map(|bref| get_blob_ref(&bref).ok())
-            .flatten();
+            .and_then(|bref| get_blob_ref(&bref).ok());
         let banner = profile
             .banner
             .clone()
-            .map(|bref| get_blob_ref(&bref).ok())
-            .flatten();
+            .and_then(|bref| get_blob_ref(&bref).ok());
         sqlx::query!(
             r#"
                 INSERT INTO profiles (did, handle, display_name, description, description_facets, avatar, banner, created_at)
@@ -100,7 +97,7 @@ impl LexiconIngestor for ActorProfileIngestor {
                     types::fm::teal::alpha::actor::profile::RecordData,
                 >(record.clone())?;
                 if let Some(ref commit) = message.commit {
-                    if let Some(ref cid) = commit.cid {
+                    if let Some(ref _cid) = commit.cid {
                         // TODO: verify cid
                         self.insert_profile(
                             Did::new(message.did)

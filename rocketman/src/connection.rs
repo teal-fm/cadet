@@ -10,6 +10,8 @@ use tracing::{error, info};
 use url::Url;
 
 use crate::options::JetstreamOptions;
+use crate::time::system_time::SystemTimeProvider;
+use crate::time::TimeProvider;
 
 pub struct JetstreamConnection {
     pub opts: JetstreamOptions,
@@ -88,6 +90,10 @@ impl JetstreamConnection {
         );
         let mut retry_interval = 1;
 
+        let time_provider = SystemTimeProvider::new();
+
+        let mut start_time = time_provider.now();
+
         loop {
             counter!("jetstream.connection.attempt").increment(1);
             info!("Connecting to {}", self.opts.ws_url);
@@ -140,15 +146,26 @@ impl JetstreamConnection {
                     }
                 }
                 Err(e) => {
+                    let elapsed_time = time_provider.elapsed(start_time);
+                    // reset if time connected > the time we set
+                    if elapsed_time.as_secs() > self.opts.max_retry_interval_seconds {
+                        retry_interval = 0;
+                        start_time = time_provider.now();
+                    }
                     counter!("jetstream.connection.error").increment(1);
                     error!("Connection error: {}", e);
                 }
             }
 
-            let sleep_time = max(1, min(self.opts.max_retry_interval, retry_interval));
+            let sleep_time = max(1, min(self.opts.max_retry_interval_seconds, retry_interval));
             info!("Reconnecting in {} seconds...", sleep_time);
             sleep(Duration::from_secs(sleep_time)).await;
-            retry_interval = retry_interval * 2;
+
+            if retry_interval > self.opts.max_retry_interval_seconds {
+                retry_interval = self.opts.max_retry_interval_seconds;
+            } else {
+                retry_interval *= 2;
+            }
         }
     }
 

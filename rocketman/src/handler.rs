@@ -52,7 +52,7 @@ pub async fn handle_message(
                     debug!("Cursor: {}", cursor);
                     if time_us > cursor {
                         debug!("Cursor is behind, resetting");
-                        *cursor = time_us.clone();
+                        *cursor = *time_us;
                     }
                 }
             }

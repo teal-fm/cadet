@@ -8,7 +8,10 @@ use metrics_exporter_prometheus::PrometheusBuilder;
 use tracing::error;
 
 use rocketman::{
-    connection::JetstreamConnection, handler, ingestion::LexiconIngestor, options::JetstreamOptions,
+    connection::JetstreamConnection,
+    handler,
+    ingestion::{DefaultLexiconIngestor, LexiconIngestor},
+    options::JetstreamOptions,
 };
 
 mod cursor;
@@ -45,10 +48,14 @@ async fn main() {
 
     let opts = JetstreamOptions::builder()
         .wanted_collections(
-            vec!["fm.teal.alpha.feed.play", "fm.teal.alpha.actor.profile"]
-                .iter()
-                .map(|collection| collection.to_string())
-                .collect(),
+            [
+                "fm.teal.alpha.feed.play",
+                "fm.teal.alpha.actor.profile",
+                "app.bsky.feed.post",
+            ]
+            .iter()
+            .map(|collection| collection.to_string())
+            .collect(),
         )
         .build();
 
@@ -66,6 +73,11 @@ async fn main() {
         Box::new(ingestors::teal::actor_profile::ActorProfileIngestor::new(
             pool.clone(),
         )),
+    );
+
+    ingestors.insert(
+        "app.bsky.feed.post".to_string(),
+        Box::new(DefaultLexiconIngestor),
     );
 
     // tracks the last message we've processed
@@ -97,7 +109,7 @@ async fn main() {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
             let cursor_to_store: Option<u64> = {
                 let cursor_guard = c_cursor.lock().unwrap();
-                cursor_guard.clone()
+                *cursor_guard
             };
             if let Some(cursor) = cursor_to_store {
                 if let Err(e) = cursor::store_cursor(cursor).await {
