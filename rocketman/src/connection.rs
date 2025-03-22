@@ -23,8 +23,8 @@ pub struct JetstreamConnection {
 
 impl JetstreamConnection {
     pub fn new(opts: JetstreamOptions) -> Self {
-        let (reconnect_tx, reconnect_rx) = flume::unbounded();
-        let (msg_tx, msg_rx) = flume::unbounded();
+        let (reconnect_tx, reconnect_rx) = flume::bounded(opts.bound);
+        let (msg_tx, msg_rx) = flume::bounded(opts.bound);
         Self {
             opts,
             reconnect_tx,
