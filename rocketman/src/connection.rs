@@ -60,6 +60,11 @@ impl JetstreamConnection {
             url.query_pairs_mut()
                 .append_pair("cursor", &cursor.to_string());
         }
+        #[cfg(feature = "zstd")]
+        if self.opts.compress {
+            url.query_pairs_mut()
+                .append_pair("compress", "true");
+        }
 
         url.to_string()
     }

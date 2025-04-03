@@ -9,10 +9,27 @@ use std::{
 use tokio_tungstenite::tungstenite::{Error, Message};
 use tracing::{debug, error};
 
+#[cfg(feature = "zstd")]
+use std::io::Cursor as IoCursor;
+#[cfg(feature = "zstd")]
+use std::sync::LazyLock;
+#[cfg(feature = "zstd")]
+use zstd::dict::DecoderDictionary;
+
 use crate::{
     ingestion::LexiconIngestor,
     types::event::{Event, Kind},
 };
+
+
+
+/// The custom `zstd` dictionary used for decoding compressed Jetstream messages.
+///
+/// Sourced from the [official Bluesky Jetstream repo.](https://github.com/bluesky-social/jetstream/tree/main/pkg/models)
+#[cfg(feature = "zstd")]
+static ZSTD_DICTIONARY: LazyLock<DecoderDictionary> = LazyLock::new(|| {
+    DecoderDictionary::copy(include_bytes!("../zstd/dictionary"))
+});
 
 pub async fn handle_message(
     message: Message,
@@ -38,57 +55,34 @@ pub async fn handle_message(
     describe_counter!("jetstream.error", Unit::Count, "errors encountered");
     match message {
         Message::Text(text) => {
+            debug!("Text message received");
             counter!("jetstream.event").increment(1);
-
             let envelope: Event<Value> = serde_json::from_str(&text).map_err(|e| {
                 anyhow::anyhow!("Failed to parse message: {} with json string {}", e, text)
             })?;
-
             debug!("envelope: {:?}", envelope);
-
-            if let Some(ref time_us) = envelope.time_us {
-                debug!("Time: {}", time_us);
-                if let Some(cursor) = cursor.lock().unwrap().as_mut() {
-                    debug!("Cursor: {}", cursor);
-                    if time_us > cursor {
-                        debug!("Cursor is behind, resetting");
-                        *cursor = *time_us;
-                    }
-                }
-            }
-
-            match envelope.kind {
-                Kind::Commit => match extract_nsid(&text) {
-                    Ok((nsid, val)) => {
-                        if let Some(fun) = ingestors.get(&nsid) {
-                            match fun.ingest(val).await {
-                                Ok(_) => counter!("jetstream.event.parse.commit", "nsid" => nsid)
-                                    .increment(1),
-                                Err(e) => {
-                                    error!("Error parsing commit: {}", e);
-                                    counter!("jetstream.error").increment(1);
-                                    counter!("jetstream.event.fail").increment(1);
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => error!("Error parsing commit: {}", e),
-                },
-                Kind::Identity => {
-                    counter!("jetstream.event.parse.identity").increment(1);
-                }
-                Kind::Account => {
-                    counter!("jetstream.event.parse.account").increment(1);
-                }
-                Kind::Unknown(kind) => {
-                    counter!("jetstream.event.parse.unknown", "kind" => kind).increment(1);
-                }
-            }
+            handle_envelope(envelope, cursor, ingestors).await?;
             Ok(())
         }
+        #[cfg(feature = "zstd")]
+        Message::Binary(bytes) => {
+            debug!("Binary message received");
+            counter!("jetstream.event").increment(1);
+            let decoder = zstd::stream::Decoder::with_prepared_dictionary(
+                IoCursor::new(bytes),
+                &*ZSTD_DICTIONARY,
+            )?;
+            let envelope: Event<Value> = serde_json::from_reader(decoder).map_err(|e| {
+                anyhow::anyhow!("Failed to parse binary message: {}", e)
+            })?;
+            debug!("envelope: {:?}", envelope);
+            handle_envelope(envelope, cursor, ingestors).await?;
+            Ok(())
+        }
+        #[cfg(not(feature = "zstd"))]
         Message::Binary(_) => {
             debug!("Binary message received");
-            Ok(())
+            Err(anyhow::anyhow!("binary message received but zstd feature is not enabled"))
         }
         Message::Close(_) => {
             debug!("Server closed connection");
@@ -102,22 +96,61 @@ pub async fn handle_message(
     }
 }
 
-fn extract_nsid(message: &str) -> anyhow::Result<(String, Event<Value>)> {
-    let envelope: Event<Value> = serde_json::from_str(message).map_err(|e| {
-        anyhow::anyhow!(
-            "Failed to parse message: {} with json string {}",
-            e,
-            message
-        )
-    })?;
+async fn handle_envelope(
+    envelope: Event<Value>,
+    cursor: Arc<Mutex<Option<u64>>>,
+    ingestors: &HashMap<String, Box<dyn LexiconIngestor + Send + Sync>>,
+) -> Result<()> {
+    if let Some(ref time_us) = envelope.time_us {
+        debug!("Time: {}", time_us);
+        if let Some(cursor) = cursor.lock().unwrap().as_mut() {
+            debug!("Cursor: {}", cursor);
+            if time_us > cursor {
+                debug!("Cursor is behind, resetting");
+                *cursor = *time_us;
+            }
+        }
+    }
 
+    match envelope.kind {
+        Kind::Commit => match extract_commit_nsid(&envelope) {
+            Ok(nsid) => {
+                if let Some(fun) = ingestors.get(&nsid) {
+                    match fun.ingest(envelope).await {
+                        Ok(_) => counter!("jetstream.event.parse.commit", "nsid" => nsid)
+                            .increment(1),
+                        Err(e) => {
+                            error!("Error parsing commit: {}", e);
+                            counter!("jetstream.error").increment(1);
+                            counter!("jetstream.event.fail").increment(1);
+                        }
+                    }
+                }
+            }
+            Err(e) => error!("Error parsing commit: {}", e),
+        },
+        Kind::Identity => {
+            counter!("jetstream.event.parse.identity").increment(1);
+        }
+        Kind::Account => {
+            counter!("jetstream.event.parse.account").increment(1);
+        }
+        Kind::Unknown(kind) => {
+            counter!("jetstream.event.parse.unknown", "kind" => kind).increment(1);
+        }
+    }
+    Ok(())
+}
+
+
+fn extract_commit_nsid(envelope: &Event<Value>) -> anyhow::Result<String> {
     // if the type is not a commit
-    if envelope.kind != Kind::Commit || envelope.commit.is_none() {
+    if envelope.commit.is_none() {
         return Err(anyhow::anyhow!(
-            "Message is not a commit, so there is no nsid attached."
+            "Message has no commit, so there is no nsid attached."
         ));
     } else if let Some(ref commit) = envelope.commit {
-        return Ok((commit.collection.clone(), envelope));
+        return Ok(commit.collection.clone());
     }
 
     Err(anyhow::anyhow!("Failed to extract nsid: unknown error"))
@@ -213,6 +246,61 @@ mod tests {
         assert_eq!(*cursor.lock().unwrap(), Some(200));
     }
 
+    #[cfg(feature = "zstd")]
+    #[tokio::test]
+    async fn test_binary_valid_commit() {
+        let (reconnect_tx, _reconnect_rx) = setup_reconnect_channel();
+        let cursor = Arc::new(Mutex::new(Some(100)));
+        let called_flag = Arc::new(Mutex::new(false));
+
+        let uncompressed_json = json!({
+            "did": "did:example:123",
+            "time_us": 200,
+            "kind": "commit",
+            "commit": {
+                "rev": "1",
+                "operation": "create",
+                "collection": "ns1",
+                "rkey": "rkey1",
+                "record": { "foo": "bar" },
+                "cid": "cid123"
+            },
+        }).to_string();
+
+        let compressed_dest: IoCursor<Vec<u8>> = IoCursor::new(vec![]);
+        let mut encoder = zstd::Encoder::with_prepared_dictionary(
+            compressed_dest,
+            &zstd::dict::EncoderDictionary::copy(include_bytes!("../zstd/dictionary"), 0),
+        ).unwrap();
+        std::io::copy(&mut IoCursor::new(uncompressed_json.as_bytes()), &mut encoder).unwrap();
+        let compressed_dest = encoder.finish().unwrap();
+
+        let mut ingestors: HashMap<
+            String,
+            Box<dyn crate::ingestion::LexiconIngestor + Send + Sync>,
+        > = HashMap::new();
+        ingestors.insert(
+            "ns1".to_string(),
+            Box::new(DummyIngestor {
+                called: called_flag.clone(),
+            }),
+        );
+
+        let result = handle_message(
+            Message::Binary(compressed_dest.into_inner()),
+            &ingestors,
+            reconnect_tx,
+            cursor.clone(),
+        )
+        .await;
+
+        assert!(result.is_ok());
+        // Check that the ingestor was called.
+        assert!(*called_flag.lock().unwrap());
+        // Verify that the cursor got updated.
+        assert_eq!(*cursor.lock().unwrap(), Some(200));
+    }
+
     #[tokio::test]
     async fn test_commit_ingest_failure() {
         let (reconnect_tx, _reconnect_rx) = setup_reconnect_channel();
@@ -277,23 +365,6 @@ mod tests {
 
         let result =
             handle_message(Message::Text(event_json), &ingestors, reconnect_tx, cursor).await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_binary_message() {
-        let (reconnect_tx, _reconnect_rx) = setup_reconnect_channel();
-        let cursor = Arc::new(Mutex::new(None));
-        let ingestors: HashMap<String, Box<dyn crate::ingestion::LexiconIngestor + Send + Sync>> =
-            HashMap::new();
-
-        let result = handle_message(
-            Message::Binary(vec![1, 2, 3]),
-            &ingestors,
-            reconnect_tx,
-            cursor,
-        )
-        .await;
         assert!(result.is_ok());
     }
 

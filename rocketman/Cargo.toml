@@ -27,3 +27,8 @@ serde_json.workspace = true
 flume.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
+zstd = { version = "0.13.3", optional = true }
+
+[features]
+default = ["zstd"]
+zstd = ["dep:zstd"]
