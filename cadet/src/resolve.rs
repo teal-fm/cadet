@@ -3,6 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use anyhow::{anyhow, Result};
+
 // should be same as regex /^did:[a-z]+:[\S\s]+/
 fn is_did(did: &str) -> bool {
     let parts: Vec<&str> = did.split(':').collect();
@@ -17,7 +19,7 @@ fn is_did(did: &str) -> bool {
         return false;
     }
 
-    if !parts[1].chars().all(|c| c.is_ascii_lowercase()) {
+    if !parts[1].chars().all(|c| c.is_ascii_lowercase()) || parts[1].is_empty() {
         // method must be all lowercase
         return false;
     }
@@ -77,11 +79,14 @@ async fn resolve_handle(handle: &str, resolver_app_view: &str) -> Result<String,
     Ok(res.did)
 }
 
-async fn get_did_doc(did: &str) -> Result<DidDocument, reqwest::Error> {
+async fn get_did_doc(did: &str) -> Result<DidDocument> {
     // get the specific did spec
     // did:plc:abcd1e -> plc
     let parts: Vec<&str> = did.split(':').collect();
     let spec = parts[1];
+    if spec.is_empty() {
+        return Err(anyhow!("Empty spec in DID: {}", did));
+    }
     match spec {
         "plc" => {
             let res: DidDocument = reqwest::get(format!("https://plc.directory/{}", did))
@@ -123,10 +128,7 @@ fn get_service_endpoint(
         .cloned()
 }
 
-pub async fn resolve_identity(
-    id: &str,
-    resolver_app_view: &str,
-) -> Result<ResolvedIdentity, reqwest::Error> {
+pub async fn resolve_identity(id: &str, resolver_app_view: &str) -> Result<ResolvedIdentity> {
     // is our identifier a did
     let did = if is_did(id) {
         id
