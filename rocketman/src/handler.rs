@@ -39,51 +39,11 @@ pub async fn handle_message(
     match message {
         Message::Text(text) => {
             counter!("jetstream.event").increment(1);
-
             let envelope: Event<Value> = serde_json::from_str(&text).map_err(|e| {
                 anyhow::anyhow!("Failed to parse message: {} with json string {}", e, text)
             })?;
-
             debug!("envelope: {:?}", envelope);
-
-            if let Some(ref time_us) = envelope.time_us {
-                debug!("Time: {}", time_us);
-                if let Some(cursor) = cursor.lock().unwrap().as_mut() {
-                    debug!("Cursor: {}", cursor);
-                    if time_us > cursor {
-                        debug!("Cursor is behind, resetting");
-                        *cursor = *time_us;
-                    }
-                }
-            }
-
-            match envelope.kind {
-                Kind::Commit => match extract_nsid(&text) {
-                    Ok((nsid, val)) => {
-                        if let Some(fun) = ingestors.get(&nsid) {
-                            match fun.ingest(val).await {
-                                Ok(_) => counter!("jetstream.event.parse.commit", "nsid" => nsid)
-                                    .increment(1),
-                                Err(e) => {
-                                    error!("Error parsing commit: {}", e);
-                                    counter!("jetstream.error").increment(1);
-                                    counter!("jetstream.event.fail").increment(1);
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => error!("Error parsing commit: {}", e),
-                },
-                Kind::Identity => {
-                    counter!("jetstream.event.parse.identity").increment(1);
-                }
-                Kind::Account => {
-                    counter!("jetstream.event.parse.account").increment(1);
-                }
-                Kind::Unknown(kind) => {
-                    counter!("jetstream.event.parse.unknown", "kind" => kind).increment(1);
-                }
-            }
+            handle_envelope(envelope, cursor, ingestors).await?;
             Ok(())
         }
         Message::Binary(_) => {
@@ -102,22 +62,61 @@ pub async fn handle_message(
     }
 }
 
-fn extract_nsid(message: &str) -> anyhow::Result<(String, Event<Value>)> {
-    let envelope: Event<Value> = serde_json::from_str(message).map_err(|e| {
-        anyhow::anyhow!(
-            "Failed to parse message: {} with json string {}",
-            e,
-            message
-        )
-    })?;
+async fn handle_envelope(
+    envelope: Event<Value>,
+    cursor: Arc<Mutex<Option<u64>>>,
+    ingestors: &HashMap<String, Box<dyn LexiconIngestor + Send + Sync>>,
+) -> Result<()> {
+    if let Some(ref time_us) = envelope.time_us {
+        debug!("Time: {}", time_us);
+        if let Some(cursor) = cursor.lock().unwrap().as_mut() {
+            debug!("Cursor: {}", cursor);
+            if time_us > cursor {
+                debug!("Cursor is behind, resetting");
+                *cursor = *time_us;
+            }
+        }
+    }
 
+    match envelope.kind {
+        Kind::Commit => match extract_commit_nsid(&envelope) {
+            Ok(nsid) => {
+                if let Some(fun) = ingestors.get(&nsid) {
+                    match fun.ingest(envelope).await {
+                        Ok(_) => counter!("jetstream.event.parse.commit", "nsid" => nsid)
+                            .increment(1),
+                        Err(e) => {
+                            error!("Error parsing commit: {}", e);
+                            counter!("jetstream.error").increment(1);
+                            counter!("jetstream.event.fail").increment(1);
+                        }
+                    }
+                }
+            }
+            Err(e) => error!("Error parsing commit: {}", e),
+        },
+        Kind::Identity => {
+            counter!("jetstream.event.parse.identity").increment(1);
+        }
+        Kind::Account => {
+            counter!("jetstream.event.parse.account").increment(1);
+        }
+        Kind::Unknown(kind) => {
+            counter!("jetstream.event.parse.unknown", "kind" => kind).increment(1);
+        }
+    }
+    Ok(())
+}
+
+
+fn extract_commit_nsid(envelope: &Event<Value>) -> anyhow::Result<String> {
     // if the type is not a commit
-    if envelope.kind != Kind::Commit || envelope.commit.is_none() {
+    if envelope.commit.is_none() {
         return Err(anyhow::anyhow!(
-            "Message is not a commit, so there is no nsid attached."
+            "Message has no commit, so there is no nsid attached."
         ));
     } else if let Some(ref commit) = envelope.commit {
-        return Ok((commit.collection.clone(), envelope));
+        return Ok(commit.collection.clone());
     }
 
     Err(anyhow::anyhow!("Failed to extract nsid: unknown error"))
