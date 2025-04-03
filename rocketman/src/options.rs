@@ -13,7 +13,7 @@ pub struct JetstreamOptions {
     #[builder(default)]
     pub bound: usize,
     #[cfg(feature = "zstd")]
-    #[builder(default)]
+    #[builder(default = true)]
     pub compress: bool,
     pub wanted_collections: Option<Vec<String>>,
     pub wanted_dids: Option<Vec<String>>,
