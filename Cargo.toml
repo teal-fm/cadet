@@ -4,6 +4,7 @@ resolver = "2"
 
 
 [workspace.dependencies]
+atrium-api = "0.25.2"
 # jetstream library
 rocketman = { path = "./rocketman" }
 # types library
@@ -14,7 +15,10 @@ tokio-tungstenite = { version = "0.20", features = [
     "rustls-tls-native-roots",
     "rustls-tls-webpki-roots",
 ] }
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "rustls-tls",
+] }
 serde = "1"
 serde_json = "1"
 flume = "0.11.1"

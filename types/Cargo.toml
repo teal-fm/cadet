@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+atrium-api.workspace = true
 atrium-xrpc = "0.12.1"
 chrono = "0.4.39"
 http = "1.2.0"

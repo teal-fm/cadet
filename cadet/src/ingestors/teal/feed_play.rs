@@ -1,10 +1,10 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
+use atrium_api::types::string::Datetime;
 use rocketman::{ingestion::LexiconIngestor, types::event::Event};
 use serde_json::Value;
 use sqlx::{types::Uuid, PgPool};
 use time::{format_description::well_known, OffsetDateTime};
-use types::types::string::Datetime;
 
 use super::assemble_at_uri;
 
