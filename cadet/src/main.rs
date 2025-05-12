@@ -51,7 +51,6 @@ async fn main() {
             [
                 "fm.teal.alpha.feed.play",
                 "fm.teal.alpha.actor.profile",
-                "app.bsky.feed.post",
             ]
             .iter()
             .map(|collection| collection.to_string())
