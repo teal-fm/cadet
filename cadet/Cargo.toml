@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+atrium-api.workspace = true
 tokio.workspace = true
 tokio-tungstenite.workspace = true
 reqwest.workspace = true

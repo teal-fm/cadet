@@ -1,10 +1,10 @@
 use async_trait::async_trait;
+use atrium_api::types::string::{Datetime, Did};
 use multibase::Base;
 use rocketman::{ingestion::LexiconIngestor, types::event::Event};
 use serde_json::Value;
 use sqlx::PgPool;
 use time::{format_description::well_known, OffsetDateTime};
-use types::types::string::{Datetime, Did};
 
 use crate::resolve::resolve_identity;
 
@@ -12,10 +12,10 @@ pub struct ActorProfileIngestor {
     sql: PgPool,
 }
 
-fn get_blob_ref(blob_ref: &types::types::BlobRef) -> anyhow::Result<String> {
+fn get_blob_ref(blob_ref: &atrium_api::types::BlobRef) -> anyhow::Result<String> {
     match blob_ref {
-        types::types::BlobRef::Typed(r) => match r {
-            types::types::TypedBlobRef::Blob(blob) => {
+        atrium_api::types::BlobRef::Typed(r) => match r {
+            atrium_api::types::TypedBlobRef::Blob(blob) => {
                 // Use into_v1() to get the CID v1, then convert to Base32 (bafy...)
                 blob.r#ref
                     .0
@@ -23,7 +23,7 @@ fn get_blob_ref(blob_ref: &types::types::BlobRef) -> anyhow::Result<String> {
                     .map_err(|e| anyhow::anyhow!(e))
             }
         },
-        types::types::BlobRef::Untyped(_) => {
+        atrium_api::types::BlobRef::Untyped(_) => {
             Err(anyhow::anyhow!("Untyped blob reference not supported"))
         }
     }
