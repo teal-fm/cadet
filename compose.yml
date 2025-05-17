@@ -1,12 +1,12 @@
 services:
   cadet:
-    image: ghcr.io/espeon/cadet:main
+    image: ghcr.io/espeon/cadet
     ports:
       - "9000:9000"
     env_file:
       - .env
   satellite:
-    image: ghcr.io/espeon/satellite:main
+    image: ghcr.io/espeon/satellite
     ports:
       - "3132:3000"
     env_file:
