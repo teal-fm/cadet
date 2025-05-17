@@ -32,6 +32,8 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --build-arg BIN_NAME=cadet \
             --tag ghcr.io/${{ github.repository_owner }}/cadet:${GITHUB_REF_NAME#refs/tags/v} \
+            $(if [ "${{ github.ref_name }}" == "main" ]; then echo "--tag \
+              ghcr.io/${{ github.repository_owner }}/cadet:latest"; fi) \
             --push .
 
       - name: Docker Buildx Satellite Image
@@ -40,4 +42,6 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             --build-arg BIN_NAME=satellite \
             --tag ghcr.io/${{ github.repository_owner }}/satellite:${GITHUB_REF_NAME#refs/tags/v} \
+            $(if [ "${{ github.ref_name }}" == "main" ]; then echo "--tag \
+              ghcr.io/${{ github.repository_owner }}/satellite:latest"; fi) \
             --push .
