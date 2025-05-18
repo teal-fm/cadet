@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                    INSERT INTO artists (mbid, name) VALUES ($1, $2)\n                    ON CONFLICT (mbid) DO NOTHING\n                    RETURNING mbid;\n                ",
+  "query": "\n                INSERT INTO recordings (mbid, name) VALUES ($1, $2)\n                ON CONFLICT (mbid) DO NOTHING\n                RETURNING mbid;\n            ",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       false
     ]
   },
-  "hash": "c8cc3765a2701914e910091405f0f1a45d8508b9e60deeca6c5c0fb743a10800"
+  "hash": "08cb56b524ad354b9857f9a1226b3cd9e63866f16c4901349ffa3cf116ca3131"
 }
