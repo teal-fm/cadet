@@ -15,17 +15,13 @@ pub struct ActorProfileIngestor {
 fn get_blob_ref(blob_ref: &atrium_api::types::BlobRef) -> anyhow::Result<String> {
     match blob_ref {
         atrium_api::types::BlobRef::Typed(r) => match r {
-            atrium_api::types::TypedBlobRef::Blob(blob) => {
-                // Use into_v1() to get the CID v1, then convert to Base32 (bafy...)
-                blob.r#ref
-                    .0
-                    .to_string_of_base(Base::Base32Lower)
-                    .map_err(|e| anyhow::anyhow!(e))
-            }
+            atrium_api::types::TypedBlobRef::Blob(blob) => blob
+                .r#ref
+                .0
+                .to_string_of_base(Base::Base32Lower)
+                .map_err(|e| anyhow::anyhow!(e)),
         },
-        atrium_api::types::BlobRef::Untyped(_) => {
-            Err(anyhow::anyhow!("Untyped blob reference not supported"))
-        }
+        atrium_api::types::BlobRef::Untyped(u) => Ok(u.cid.clone()),
     }
 }
 
@@ -39,6 +35,7 @@ impl ActorProfileIngestor {
         provided_did: Did,
         profile: &types::fm::teal::alpha::actor::profile::RecordData,
     ) -> anyhow::Result<()> {
+        dbg!(&profile);
         // TODO: cache the doc for like 8 hours or something
         let did = resolve_identity(provided_did.as_str(), "https://public.api.bsky.app").await?;
 
@@ -61,6 +58,13 @@ impl ActorProfileIngestor {
             r#"
                 INSERT INTO profiles (did, handle, display_name, description, description_facets, avatar, banner, created_at)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (did) DO UPDATE SET
+                    display_name = EXCLUDED.display_name,
+                    description = EXCLUDED.description,
+                    description_facets = EXCLUDED.description_facets,
+                    avatar = EXCLUDED.avatar,
+                    banner = EXCLUDED.banner,
+                    created_at = EXCLUDED.created_at;
             "#,
             did.identity,
             handle,
