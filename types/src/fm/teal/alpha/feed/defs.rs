@@ -3,12 +3,19 @@
 //!This lexicon is in a not officially released state. It is subject to change. | Misc. items related to feeds.
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct PlayViewData {
-    ///Array of Musicbrainz artist IDs
+pub struct ArtistData {
+    ///The Musicbrainz ID of the artist
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
-    pub artist_mb_ids: core::option::Option<Vec<String>>,
-    ///Array of artist names in order of original appearance.
-    pub artist_names: Vec<String>,
+    pub artist_mb_id: core::option::Option<String>,
+    ///The name of the artist
+    pub artist_name: String,
+}
+pub type Artist = atrium_api::types::Object<ArtistData>;
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayViewData {
+    ///Array of artists in order of original appearance.
+    pub artists: Vec<Artist>,
     ///The length of the track in seconds
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
     pub duration: core::option::Option<i64>,

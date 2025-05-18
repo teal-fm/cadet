@@ -5,11 +5,15 @@ use atrium_api::types::TryFromUnknown;
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct RecordData {
-    ///Array of Musicbrainz artist IDs
+    ///Array of Musicbrainz artist IDs. Prefer using 'artists'.
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
     pub artist_mb_ids: core::option::Option<Vec<String>>,
-    ///Array of artist names in order of original appearance.
-    pub artist_names: Vec<String>,
+    ///Array of artist names in order of original appearance. Prefer using 'artists'.
+    #[serde(skip_serializing_if = "core::option::Option::is_none")]
+    pub artist_names: core::option::Option<Vec<String>>,
+    ///Array of artists in order of original appearance.
+    #[serde(skip_serializing_if = "core::option::Option::is_none")]
+    pub artists: core::option::Option<Vec<crate::fm::teal::alpha::feed::defs::Artist>>,
     ///The length of the track in seconds
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
     pub duration: core::option::Option<i64>,

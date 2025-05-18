@@ -17,6 +17,75 @@ impl PlayIngestor {
         Self { sql }
     }
 
+    /// Inserts or updates an artist in the database.
+    /// Returns the Uuid of the artist.
+    async fn insert_artist(&self, mbid: &str, name: &str) -> anyhow::Result<Uuid> {
+        let artist_uuid = Uuid::parse_str(mbid)?;
+        let res = sqlx::query!(
+            r#"
+                INSERT INTO artists (mbid, name) VALUES ($1, $2)
+                ON CONFLICT (mbid) DO NOTHING
+                RETURNING mbid;
+            "#,
+            artist_uuid,
+            name
+        )
+        .fetch_all(&self.sql)
+        .await?;
+
+        if !res.is_empty() {
+            // TODO: send request to async scrape data from local MB instance
+        }
+
+        Ok(artist_uuid)
+    }
+
+    /// Inserts or updates a release in the database.
+    /// Returns the Uuid of the release.
+    async fn insert_release(&self, mbid: &str, name: &str) -> anyhow::Result<Uuid> {
+        let release_uuid = Uuid::parse_str(mbid)?;
+        let res = sqlx::query!(
+            r#"
+                INSERT INTO releases (mbid, name) VALUES ($1, $2)
+                ON CONFLICT (mbid) DO NOTHING
+                RETURNING mbid;
+            "#,
+            release_uuid,
+            name
+        )
+        .fetch_all(&self.sql)
+        .await?;
+
+        if !res.is_empty() {
+            // TODO: send request to async scrape data from local MB instance
+        }
+
+        Ok(release_uuid)
+    }
+
+    /// Inserts or updates a recording in the database.
+    /// Returns the Uuid of the recording.
+    async fn insert_recording(&self, mbid: &str, name: &str) -> anyhow::Result<Uuid> {
+        let recording_uuid = Uuid::parse_str(mbid)?;
+        let res = sqlx::query!(
+            r#"
+                INSERT INTO recordings (mbid, name) VALUES ($1, $2)
+                ON CONFLICT (mbid) DO NOTHING
+                RETURNING mbid;
+            "#,
+            recording_uuid,
+            name
+        )
+        .fetch_all(&self.sql)
+        .await?;
+
+        if !res.is_empty() {
+            // TODO: send request to async scrape data from local MB instance
+        }
+
+        Ok(recording_uuid)
+    }
+
     pub async fn insert_play(
         &self,
         play_record: &types::fm::teal::alpha::feed::play::RecordData,
@@ -26,89 +95,62 @@ impl PlayIngestor {
         rkey: &str,
     ) -> anyhow::Result<()> {
         let mut parsed_artists: Vec<(Uuid, String)> = vec![];
-        for artist in &play_record.artist_names {
-            // Assuming artist_mbid is optional, handle missing mbid gracefully
-            let artist_mbid = if let Some(ref mbid) = play_record.artist_mb_ids {
-                mbid.get(
-                    play_record
-                        .artist_names
-                        .iter()
-                        .position(|name| name == artist)
-                        .unwrap_or(0),
-                )
-            } else {
-                // Handle case where artist MBID is missing, maybe log a warning
-                eprintln!("Warning: Artist MBID missing for '{}'", artist);
-                continue;
-            };
-
-            let artist_name = artist.clone(); // Clone to move into the query
-            if let Some(artist_mbid) = artist_mbid {
-                let artist_uuid = Uuid::parse_str(artist_mbid)?;
-                let res = sqlx::query!(
-                    r#"
-                    INSERT INTO artists (mbid, name) VALUES ($1, $2)
-                    ON CONFLICT (mbid) DO NOTHING
-                    RETURNING mbid;
-                "#,
-                    artist_uuid,
-                    artist_name
-                )
-                .fetch_all(&self.sql)
-                .await?;
-
-                if !res.is_empty() {
-                    // TODO: send request to async scrape data from local MB instance
+        if let Some(ref artists) = &play_record.artists {
+            for artist in artists {
+                let artist_name = artist.artist_name.clone();
+                let artist_mbid = artist.artist_mb_id.clone();
+                if let Some(artist_mbid) = artist_mbid {
+                    let artist_uuid = self.insert_artist(&artist_mbid, &artist_name).await?;
+                    parsed_artists.push((artist_uuid, artist_name.clone()));
+                } else {
+                    // Handle case where artist MBID is missing, maybe log a warning
+                    eprintln!("Warning: Artist MBID missing for '{}'", artist_name);
                 }
+            }
+        } else {
+            if let Some(artist_names) = &play_record.artist_names {
+                for artist_name in artist_names {
+                    // Assuming artist_mbid is optional, handle missing mbid gracefully
+                    let artist_mbid_opt = if let Some(ref mbid_list) = play_record.artist_mb_ids {
+                        mbid_list.get(
+                            artist_names
+                                .iter()
+                                .position(|name| name == artist_name)
+                                .unwrap_or(0),
+                        )
+                    } else {
+                        None
+                    };
 
-                parsed_artists.push((artist_uuid, artist_name));
+                    if let Some(artist_mbid) = artist_mbid_opt {
+                        let artist_uuid = self.insert_artist(artist_mbid, artist_name).await?;
+                        parsed_artists.push((artist_uuid, artist_name.clone()));
+                    } else {
+                        // Handle case where artist MBID is missing, maybe log a warning
+                        eprintln!("Warning: Artist MBID missing for '{}'", artist_name);
+                    }
+                }
             }
         }
 
         // Insert release if missing
-        let release_mbid = if let Some(release_mbid) = &play_record.release_mb_id {
-            let release_name = play_record.release_name.clone(); // Clone for move
-            let release_uuid = Uuid::parse_str(release_mbid).unwrap();
-            let res = sqlx::query!(
-                r#"
-                    INSERT INTO releases (mbid, name) VALUES ($1, $2)
-                    ON CONFLICT (mbid) DO NOTHING
-                    RETURNING mbid;
-                "#,
-                release_uuid,
-                release_name
-            )
-            .fetch_all(&self.sql)
-            .await?;
-
-            if !res.is_empty() {
-                // TODO: send request to async scrape data from local MB instance
+        let release_mbid_opt = if let Some(release_mbid) = &play_record.release_mb_id {
+            if let Some(release_name) = &play_record.release_name {
+                Some(self.insert_release(release_mbid, release_name).await?)
+            } else {
+                None
             }
-            Some(release_uuid)
         } else {
             None
         };
 
         // Insert recording if missing
-        let recording_mbid = if let Some(recording_mbid) = &play_record.recording_mb_id {
-            let recording_name = play_record.track_name.clone(); // Clone for move
-            let recording_uuid = Uuid::parse_str(recording_mbid).unwrap();
-            let res = sqlx::query!(
-                r#"
-                    INSERT INTO recordings (mbid, name) VALUES ($1, $2)
-                    ON CONFLICT (mbid) DO NOTHING
-                    RETURNING mbid;
-                "#,
-                recording_uuid,
-                recording_name
+        let recording_mbid_opt = if let Some(recording_mbid) = &play_record.recording_mb_id {
+            let recording_name = play_record.track_name.clone();
+            Some(
+                self.insert_recording(recording_mbid, &recording_name)
+                    .await?,
             )
-            .fetch_all(&self.sql)
-            .await?;
-
-            if !res.is_empty() {
-                // TODO: send request to async scrape data from local MB instance
-            }
-            Some(recording_uuid)
         } else {
             None
         };
@@ -147,9 +189,9 @@ impl PlayIngestor {
             play_record.duration.map(|d| d as i32),
             play_record.track_name,
             played_time_odt,
-            release_mbid.clone(),
+            release_mbid_opt,
             play_record.release_name,
-            recording_mbid.clone(),
+            recording_mbid_opt,
             play_record.submission_client_agent,
             play_record.music_service_base_domain,
         )
@@ -175,7 +217,6 @@ impl PlayIngestor {
         }
 
         // Refresh materialized views concurrently (if needed, consider if this should be done less frequently)
-        // For now keeping it as is from the SQL script, but consider performance implications.
         sqlx::query!("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_artist_play_counts;")
             .execute(&self.sql)
             .await?;
