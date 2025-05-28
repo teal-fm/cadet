@@ -12,6 +12,8 @@ pub struct JetstreamOptions {
     pub connection_success_time_seconds: u64,
     #[builder(default)]
     pub bound: usize,
+    #[builder(default)]
+    pub timeout_time_sec: usize,
     #[cfg(feature = "zstd")]
     #[builder(default = true)]
     pub compress: bool,
@@ -27,6 +29,7 @@ impl Default for JetstreamOptions {
             max_retry_interval_seconds: 120,
             connection_success_time_seconds: 60,
             bound: 65536,
+            timeout_time_sec: 40,
             #[cfg(feature = "zstd")]
             compress: true,
             wanted_collections: None,
