@@ -114,7 +114,8 @@ impl JetstreamConnection {
 
                     loop {
                         // Inner loop to handle messages, reconnect signals, and receive timeout
-                        let receive_timeout = sleep(Duration::from_secs(3));
+                        let receive_timeout =
+                            sleep(Duration::from_secs(self.opts.timeout_time_sec as u64));
                         tokio::pin!(receive_timeout);
 
                         loop {
@@ -123,7 +124,7 @@ impl JetstreamConnection {
                                     match message_result {
                                         Some(message) => {
                                             // Reset timeout on message received
-                                            receive_timeout.as_mut().reset(tokio::time::Instant::now() + Duration::from_secs(3));
+                                            receive_timeout.as_mut().reset(tokio::time::Instant::now() + Duration::from_secs(self.opts.timeout_time_sec as u64));
 
                                             histogram!("jetstream.connection.duration").record(elapsed.as_secs_f64());
                                             match message {
@@ -152,7 +153,7 @@ impl JetstreamConnection {
                                     break;
                                 }
                                 _ = &mut receive_timeout => {
-                                    info!("No commits received in 3 seconds, reconnecting.");
+                                    info!("No commits received in {} seconds, reconnecting.", self.opts.timeout_time_sec);
                                     counter!("jetstream.connection.reconnect").increment(1);
                                     break;
                                 }
@@ -297,14 +298,14 @@ mod tests {
             if let Ok((stream, _)) = listener.accept().await {
                 let ws_stream = accept_async(stream).await.expect("Failed to accept");
                 // send nothing
-                tokio::time::sleep(Duration::from_secs(10)).await;
+                tokio::time::sleep(Duration::from_secs(100)).await;
                 drop(ws_stream);
             }
         });
 
-        // spawn, then run for >3 seconds to trigger reconnect
+        // spawn, then run for >30 seconds to trigger reconnect
         let connect_handle = tokio::spawn(async move {
-            tokio::time::timeout(Duration::from_secs(5), connection.connect(cursor))
+            tokio::time::timeout(Duration::from_secs(50), connection.connect(cursor))
                 .await
                 .ok();
         });
