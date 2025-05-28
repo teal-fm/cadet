@@ -285,6 +285,7 @@ mod tests {
         let opts = JetstreamOptions {
             ws_url: crate::endpoints::JetstreamEndpoints::Custom("ws://127.0.0.1:9001".to_string()),
             bound: 5,
+            max_retry_interval_seconds: 1,
             ..Default::default()
         };
         let connection = JetstreamConnection::new(opts);
@@ -298,14 +299,14 @@ mod tests {
             if let Ok((stream, _)) = listener.accept().await {
                 let ws_stream = accept_async(stream).await.expect("Failed to accept");
                 // send nothing
-                tokio::time::sleep(Duration::from_secs(100)).await;
+                tokio::time::sleep(Duration::from_secs(6)).await;
                 drop(ws_stream);
             }
         });
 
         // spawn, then run for >30 seconds to trigger reconnect
         let connect_handle = tokio::spawn(async move {
-            tokio::time::timeout(Duration::from_secs(50), connection.connect(cursor))
+            tokio::time::timeout(Duration::from_secs(5), connection.connect(cursor))
                 .await
                 .ok();
         });
