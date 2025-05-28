@@ -62,8 +62,7 @@ impl JetstreamConnection {
         }
         #[cfg(feature = "zstd")]
         if self.opts.compress {
-            url.query_pairs_mut()
-                .append_pair("compress", "true");
+            url.query_pairs_mut().append_pair("compress", "true");
         }
 
         url.to_string()
@@ -112,40 +111,51 @@ impl JetstreamConnection {
                     info!("Connected. HTTP status: {}", response.status());
 
                     let (_, mut read) = ws_stream.split();
-                    retry_interval = 1;
 
                     loop {
-                        // Inner loop to handle messages and reconnect signals
-                        tokio::select! {
-                            message_result = read.next() => {
-                                match message_result {
-                                    Some(message) => {
-                                        histogram!("jetstream.connection.duration").record(elapsed.as_secs_f64());
-                                        match message {
-                                            Ok(message) => {
-                                                if let Err(err) = self.msg_tx.send_async(message).await {
-                                                    counter!("jetstream.error").increment(1);
-                                                    error!("Failed to queue message: {}", err);
+                        // Inner loop to handle messages, reconnect signals, and receive timeout
+                        let receive_timeout = sleep(Duration::from_secs(3));
+                        tokio::pin!(receive_timeout);
+
+                        loop {
+                            tokio::select! {
+                                message_result = read.next() => {
+                                    match message_result {
+                                        Some(message) => {
+                                            // Reset timeout on message received
+                                            receive_timeout.as_mut().reset(tokio::time::Instant::now() + Duration::from_secs(3));
+
+                                            histogram!("jetstream.connection.duration").record(elapsed.as_secs_f64());
+                                            match message {
+                                                Ok(message) => {
+                                                    if let Err(err) = self.msg_tx.send_async(message).await {
+                                                        counter!("jetstream.error").increment(1);
+                                                        error!("Failed to queue message: {}", err);
+                                                    }
                                                 }
-                                            }
-                                            Err(e) => {
+                                                Err(e) => {
                                                     counter!("jetstream.error").increment(1);
                                                     error!("Error: {}", e);
+                                                }
                                             }
                                         }
-                                    }
-                                    None => {
-                                        info!("Stream closed by server.");
-                                        // technically this should be a 'connection.break' but it results in a reconnect
-                                        counter!("jetstream.connection.reconnect").increment(1);
-                                        break; // Stream ended, break inner loop to reconnect
+                                        None => {
+                                            info!("Stream closed by server.");
+                                            counter!("jetstream.connection.reconnect").increment(1);
+                                            break; // Stream ended, break inner loop to reconnect
+                                        }
                                     }
                                 }
-                            }
-                            _ = self.reconnect_rx.recv_async() => {
-                                info!("Reconnect signal received.");
-                                counter!("jetstream.connection.reconnect").increment(1);
-                                break;
+                                _ = self.reconnect_rx.recv_async() => {
+                                    info!("Reconnect signal received.");
+                                    counter!("jetstream.connection.reconnect").increment(1);
+                                    break;
+                                }
+                                _ = &mut receive_timeout => {
+                                    info!("No commits received in 3 seconds, reconnecting.");
+                                    counter!("jetstream.connection.reconnect").increment(1);
+                                    break;
+                                }
                             }
                         }
                     }
@@ -264,5 +274,41 @@ mod tests {
         let result = timeout(Duration::from_secs(3), connection.connect(cursor)).await;
 
         assert!(result.is_err(), "Expected timeout due to retry logic");
+    }
+
+    #[tokio::test]
+    async fn test_reconnect_after_receive_timeout() {
+        use tokio::net::TcpListener;
+        use tokio_tungstenite::accept_async;
+
+        let opts = JetstreamOptions {
+            ws_url: crate::endpoints::JetstreamEndpoints::Custom("ws://127.0.0.1:9001".to_string()),
+            bound: 5,
+            ..Default::default()
+        };
+        let connection = JetstreamConnection::new(opts);
+        let cursor = Arc::new(Mutex::new(None));
+
+        // set up dummy "websocket"
+        let listener = TcpListener::bind("127.0.0.1:9001")
+            .await
+            .expect("Failed to bind");
+        let server_handle = tokio::spawn(async move {
+            if let Ok((stream, _)) = listener.accept().await {
+                let ws_stream = accept_async(stream).await.expect("Failed to accept");
+                // send nothing
+                tokio::time::sleep(Duration::from_secs(10)).await;
+                drop(ws_stream);
+            }
+        });
+
+        // spawn, then run for >3 seconds to trigger reconnect
+        let connect_handle = tokio::spawn(async move {
+            tokio::time::timeout(Duration::from_secs(5), connection.connect(cursor))
+                .await
+                .ok();
+        });
+
+        let _ = tokio::join!(server_handle, connect_handle);
     }
 }
