@@ -153,9 +153,28 @@ impl JetstreamConnection {
                                     break;
                                 }
                                 _ = &mut receive_timeout => {
-                                    info!("No commits received in {} seconds, reconnecting.", self.opts.timeout_time_sec);
-                                    counter!("jetstream.connection.reconnect").increment(1);
-                                    break;
+                                    // last final poll, just in case
+                                    match read.next().await {
+                                        Some(Ok(message)) => {
+                                            if let Err(err) = self.msg_tx.send_async(message).await {
+                                                counter!("jetstream.error").increment(1);
+                                                error!("Failed to queue message: {}", err);
+                                            }
+                                            // Reset timeout to continue
+                                            receive_timeout.as_mut().reset(tokio::time::Instant::now() + Duration::from_secs(self.opts.timeout_time_sec as u64));
+                                        }
+                                        Some(Err(e)) => {
+                                            counter!("jetstream.error").increment(1);
+                                            error!("Error receiving message during final poll: {}", e);
+                                            counter!("jetstream.connection.reconnect").increment(1);
+                                            break;
+                                        }
+                                        None => {
+                                            info!("No commits received in {} seconds, reconnecting.", self.opts.timeout_time_sec);
+                                            counter!("jetstream.connection.reconnect").increment(1);
+                                            break;
+                                        }
+                                    }
                                 }
                             }
                         }
