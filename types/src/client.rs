@@ -280,8 +280,18 @@ pub mod fm {
             where
                 T: atrium_xrpc::XrpcClient + Send + Sync,
             {
+                pub actor: actor::Service<T>,
                 pub feed: feed::Service<T>,
                 pub(crate) _phantom: core::marker::PhantomData<T>,
+            }
+            pub mod actor {
+                pub struct Service<T>
+                where
+                    T: atrium_xrpc::XrpcClient + Send + Sync,
+                {
+                    pub(crate) xrpc: std::sync::Arc<T>,
+                    pub(crate) _phantom: core::marker::PhantomData<T>,
+                }
             }
             pub mod feed {
                 pub struct Service<T>
@@ -5270,8 +5280,108 @@ where
     #[allow(unused_variables)]
     pub(crate) fn new(xrpc: std::sync::Arc<T>) -> Self {
         Self {
+            actor: fm::teal::alpha::actor::Service::new(std::sync::Arc::clone(&xrpc)),
             feed: fm::teal::alpha::feed::Service::new(std::sync::Arc::clone(&xrpc)),
             _phantom: core::marker::PhantomData,
+        }
+    }
+}
+impl<T> fm::teal::alpha::actor::Service<T>
+where
+    T: atrium_xrpc::XrpcClient + Send + Sync,
+{
+    #[allow(unused_variables)]
+    pub(crate) fn new(xrpc: std::sync::Arc<T>) -> Self {
+        Self {
+            xrpc,
+            _phantom: core::marker::PhantomData,
+        }
+    }
+    pub async fn get_profile(
+        &self,
+        params: crate::fm::teal::alpha::actor::get_profile::Parameters,
+    ) -> atrium_xrpc::Result<
+        crate::fm::teal::alpha::actor::get_profile::Output,
+        crate::fm::teal::alpha::actor::get_profile::Error,
+    > {
+        let response = self
+            .xrpc
+            .send_xrpc::<
+                _,
+                (),
+                _,
+                _,
+            >(
+                &atrium_xrpc::XrpcRequest {
+                    method: http::Method::GET,
+                    nsid: crate::fm::teal::alpha::actor::get_profile::NSID.into(),
+                    parameters: Some(params),
+                    input: None,
+                    encoding: None,
+                },
+            )
+            .await?;
+        match response {
+            atrium_xrpc::OutputDataOrBytes::Data(data) => Ok(data),
+            _ => Err(atrium_xrpc::Error::UnexpectedResponseType),
+        }
+    }
+    pub async fn get_profiles(
+        &self,
+        params: crate::fm::teal::alpha::actor::get_profiles::Parameters,
+    ) -> atrium_xrpc::Result<
+        crate::fm::teal::alpha::actor::get_profiles::Output,
+        crate::fm::teal::alpha::actor::get_profiles::Error,
+    > {
+        let response = self
+            .xrpc
+            .send_xrpc::<
+                _,
+                (),
+                _,
+                _,
+            >(
+                &atrium_xrpc::XrpcRequest {
+                    method: http::Method::GET,
+                    nsid: crate::fm::teal::alpha::actor::get_profiles::NSID.into(),
+                    parameters: Some(params),
+                    input: None,
+                    encoding: None,
+                },
+            )
+            .await?;
+        match response {
+            atrium_xrpc::OutputDataOrBytes::Data(data) => Ok(data),
+            _ => Err(atrium_xrpc::Error::UnexpectedResponseType),
+        }
+    }
+    pub async fn search_actors(
+        &self,
+        params: crate::fm::teal::alpha::actor::search_actors::Parameters,
+    ) -> atrium_xrpc::Result<
+        crate::fm::teal::alpha::actor::search_actors::Output,
+        crate::fm::teal::alpha::actor::search_actors::Error,
+    > {
+        let response = self
+            .xrpc
+            .send_xrpc::<
+                _,
+                (),
+                _,
+                _,
+            >(
+                &atrium_xrpc::XrpcRequest {
+                    method: http::Method::GET,
+                    nsid: crate::fm::teal::alpha::actor::search_actors::NSID.into(),
+                    parameters: Some(params),
+                    input: None,
+                    encoding: None,
+                },
+            )
+            .await?;
+        match response {
+            atrium_xrpc::OutputDataOrBytes::Data(data) => Ok(data),
+            _ => Err(atrium_xrpc::Error::UnexpectedResponseType),
         }
     }
 }

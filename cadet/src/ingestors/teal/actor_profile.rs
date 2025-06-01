@@ -4,7 +4,6 @@ use multibase::Base;
 use rocketman::{ingestion::LexiconIngestor, types::event::Event};
 use serde_json::Value;
 use sqlx::PgPool;
-use time::{format_description::well_known, OffsetDateTime};
 
 use crate::resolve::resolve_identity;
 
@@ -42,8 +41,7 @@ impl ActorProfileIngestor {
         let handle = did.doc.also_known_as.first().to_owned();
 
         let created_time = profile.created_at.clone().unwrap_or(Datetime::now());
-        let created_time_odt =
-            OffsetDateTime::parse(created_time.as_str(), &well_known::Rfc3339).unwrap();
+        let chrono_time = created_time.as_ref();
 
         dbg!(&profile.avatar);
         let avatar = profile
@@ -73,7 +71,7 @@ impl ActorProfileIngestor {
             serde_json::to_value(profile.description_facets.clone())?,
             avatar,
             banner,
-            created_time_odt
+            chrono_time
         )
         .execute(&self.sql)
         .await?;

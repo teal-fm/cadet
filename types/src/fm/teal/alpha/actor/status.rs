@@ -4,6 +4,9 @@ use atrium_api::types::TryFromUnknown;
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct RecordData {
+    ///The unix timestamp of the expiry time of the item. If unavailable, default to 10 minutes past the start time.
+    #[serde(skip_serializing_if = "core::option::Option::is_none")]
+    pub expiry: core::option::Option<atrium_api::types::string::Datetime>,
     pub item: crate::fm::teal::alpha::feed::defs::PlayView,
     ///The unix timestamp of when the item was recorded
     pub time: atrium_api::types::string::Datetime,

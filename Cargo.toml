@@ -1,10 +1,12 @@
 [workspace]
-members = ["cadet", "rocketman", "satellite", "types"]
+members = ["cadet", "rocketman", "satellite", "aqua", "types"]
 resolver = "2"
 
 
 [workspace.dependencies]
+tower-http = { version = "0.6", features = ["trace", "cors"] }
 atrium-api = "0.25.2"
+axum = "0.8"
 # jetstream library
 rocketman = { path = "./rocketman" }
 # types library
@@ -21,6 +23,7 @@ reqwest = { version = "0.12", default-features = false, features = [
 ] }
 serde = "1"
 serde_json = "1"
+schemars = { version = "0.8.22", features = ["raw_value", "chrono"] }
 flume = "0.11.1"
 futures-util = "0.3"
 url = "2.0"
@@ -34,7 +37,7 @@ sqlx = { version = "0.8", features = [
     "tls-rustls-ring-webpki",
     "postgres",
     "uuid",
-    "time",
+    "chrono",
 ] }
 time = { version = "0.3.37", features = [
     "formatting",
@@ -42,4 +45,5 @@ time = { version = "0.3.37", features = [
     "parsing",
     "serde",
 ] }
+chrono = { version = "0.4.26", features = ["serde"] }
 dotenvy = "0.15.7"

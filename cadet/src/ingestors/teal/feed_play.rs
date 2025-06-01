@@ -4,7 +4,6 @@ use atrium_api::types::string::Datetime;
 use rocketman::{ingestion::LexiconIngestor, types::event::Event};
 use serde_json::Value;
 use sqlx::{types::Uuid, PgPool};
-use time::{format_description::well_known, OffsetDateTime};
 
 use super::assemble_at_uri;
 
@@ -156,8 +155,7 @@ impl PlayIngestor {
         };
 
         let played_time = play_record.played_time.clone().unwrap_or(Datetime::now());
-        let played_time_odt =
-            OffsetDateTime::parse(played_time.as_str(), &well_known::Rfc3339).unwrap();
+        let chrono_time = played_time.as_ref();
 
         // Our main insert into plays
         sqlx::query!(
@@ -188,7 +186,7 @@ impl PlayIngestor {
             play_record.isrc, // Assuming ISRC is in play_record
             play_record.duration.map(|d| d as i32),
             play_record.track_name,
-            played_time_odt,
+            chrono_time,
             release_mbid_opt,
             play_record.release_name,
             recording_mbid_opt,
