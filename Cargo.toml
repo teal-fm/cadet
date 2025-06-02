@@ -6,7 +6,7 @@ resolver = "2"
 [workspace.dependencies]
 tower-http = { version = "0.6", features = ["trace", "cors"] }
 atrium-api = "0.25.2"
-axum = "0.8"
+axum = { version = "0.6.18", features = ["macros"] }
 # jetstream library
 rocketman = { path = "./rocketman" }
 # types library
