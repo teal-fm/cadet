@@ -3,9 +3,9 @@ use axum::{
     http::StatusCode,
     Json,
 };
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use time::OffsetDateTime;
 
 use crate::AppState;
 
@@ -39,10 +39,9 @@ pub struct LatestSignup {
     pub did: String,
     pub display_name: Option<String>, // Now optional
     pub handle: Option<String>,
-    #[serde(with = "time::serde::rfc3339::option")] // Use option for optional OffsetDateTime
-    pub created_at: Option<OffsetDateTime>, // Now optional
-    pub avatar: Option<String>, // Now optional
-    pub banner: Option<String>, // Now optional
+    pub created_at: Option<DateTime<Utc>>, // Now optional
+    pub avatar: Option<String>,            // Now optional
+    pub banner: Option<String>,            // Now optional
 }
 
 const fn default_limit() -> i64 {

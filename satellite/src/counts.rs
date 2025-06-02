@@ -3,9 +3,9 @@ use axum::{
     http::StatusCode,
     Json,
 };
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::AppState;
@@ -51,7 +51,7 @@ pub struct Play {
     pub release_name: Option<String>,
     pub release_mbid: Option<Uuid>,
     pub duration: Option<i32>,
-    pub played_time: Option<OffsetDateTime>,
+    pub played_time: Option<DateTime<Utc>>,
     pub uri: Option<String>,
     // MASSIVE HUGE HACK
     pub artists: Option<String>,
@@ -65,7 +65,7 @@ pub struct PlayReturn {
     pub release_name: Option<String>,
     pub release_mbid: Option<Uuid>,
     pub duration: Option<i32>,
-    pub played_time: Option<String>,
+    pub played_time: Option<DateTime<Utc>>,
     pub uri: Option<String>,
     pub artists: Vec<Artist>,
 }
@@ -138,9 +138,7 @@ pub async fn get_latest_plays(
                         release_name: play.release_name,
                         release_mbid: play.release_mbid,
                         duration: play.duration,
-                        played_time: play
-                            .played_time
-                            .map(|f| f.format(&Rfc3339).expect("Could not format to RFC3339")),
+                        played_time: play.played_time,
                         uri: play.uri,
                         artists,
                     }
