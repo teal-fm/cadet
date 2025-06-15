@@ -11,6 +11,48 @@ pub struct PlayIngestor {
     sql: PgPool,
 }
 
+fn clean(
+    record: &types::fm::teal::alpha::feed::play::RecordData,
+) -> types::fm::teal::alpha::feed::play::RecordData {
+    let mut cleaned = record.clone();
+
+    // Clean artist MBIDs inside artists vector, if present
+    if let Some(artists) = &mut cleaned.artists {
+        for artist in artists.iter_mut() {
+            if let Some(mbid) = &artist.artist_mb_id {
+                if mbid.is_empty() {
+                    artist.artist_mb_id = None;
+                }
+            }
+        }
+    }
+
+    // // Clean artist_mb_ids vector, if present
+    // if let Some(mbids) = &mut cleaned.artist_mb_ids {
+    //     for mbid in mbids.iter_mut() {
+    //         if mbid.is_empty() {
+    //             *mbid = "";
+    //         }
+    //     }
+    // }
+
+    // Clean release_mb_id
+    if let Some(release_mbid) = &cleaned.release_mb_id {
+        if release_mbid.is_empty() {
+            cleaned.release_mb_id = None;
+        }
+    }
+
+    // Clean recording_mb_id
+    if let Some(recording_mbid) = &cleaned.recording_mb_id {
+        if recording_mbid.is_empty() {
+            cleaned.recording_mb_id = None;
+        }
+    }
+
+    cleaned
+}
+
 impl PlayIngestor {
     pub fn new(sql: PgPool) -> Self {
         Self { sql }
@@ -93,6 +135,8 @@ impl PlayIngestor {
         did: &str,
         rkey: &str,
     ) -> anyhow::Result<()> {
+        dbg!("ingesting", play_record);
+        let play_record = clean(play_record);
         let mut parsed_artists: Vec<(Uuid, String)> = vec![];
         if let Some(ref artists) = &play_record.artists {
             for artist in artists {
@@ -215,43 +259,43 @@ impl PlayIngestor {
         }
 
         // Refresh materialized views concurrently (if needed, consider if this should be done less frequently)
-        sqlx::query!("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_artist_play_counts;")
+        sqlx::query!("REFRESH MATERIALIZED VIEW mv_artist_play_counts;")
             .execute(&self.sql)
             .await?;
-        sqlx::query!("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_release_play_counts;")
+        sqlx::query!("REFRESH MATERIALIZED VIEW mv_release_play_counts;")
             .execute(&self.sql)
             .await?;
-        sqlx::query!("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_recording_play_counts;")
+        sqlx::query!("REFRESH MATERIALIZED VIEW mv_recording_play_counts;")
             .execute(&self.sql)
             .await?;
-        sqlx::query!("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_global_play_count;")
+        sqlx::query!("REFRESH MATERIALIZED VIEW mv_global_play_count;")
             .execute(&self.sql)
             .await?;
 
-        // Optionally check materialised views (consider removing in production for performance)
-        // For debugging purposes, can keep for now
-        if cfg!(debug_assertions) {
-            // Conditionally compile debug checks
-            let artist_counts = sqlx::query!("SELECT * FROM mv_artist_play_counts;")
-                .fetch_all(&self.sql)
-                .await?;
-            dbg!("mv_artist_play_counts: {:?}", artist_counts);
+        // // Optionally check materialised views (consider removing in production for performance)
+        // // For debugging purposes, can keep for now
+        // if cfg!(debug_assertions) {
+        //     // Conditionally compile debug checks
+        //     let artist_counts = sqlx::query!("SELECT * FROM mv_artist_play_counts;")
+        //         .fetch_all(&self.sql)
+        //         .await?;
+        //     dbg!("mv_artist_play_counts: {:?}", artist_counts);
 
-            let release_counts = sqlx::query!("SELECT * FROM mv_release_play_counts;")
-                .fetch_all(&self.sql)
-                .await?;
-            dbg!("mv_release_play_counts: {:?}", release_counts);
+        //     let release_counts = sqlx::query!("SELECT * FROM mv_release_play_counts;")
+        //         .fetch_all(&self.sql)
+        //         .await?;
+        //     dbg!("mv_release_play_counts: {:?}", release_counts);
 
-            let recording_counts = sqlx::query!("SELECT * FROM mv_recording_play_counts;")
-                .fetch_all(&self.sql)
-                .await?;
-            dbg!("mv_recording_play_counts: {:?}", recording_counts);
+        //     let recording_counts = sqlx::query!("SELECT * FROM mv_recording_play_counts;")
+        //         .fetch_all(&self.sql)
+        //         .await?;
+        //     dbg!("mv_recording_play_counts: {:?}", recording_counts);
 
-            let global_count = sqlx::query!("SELECT * FROM mv_global_play_count;")
-                .fetch_all(&self.sql)
-                .await?;
-            dbg!("mv_global_play_count: {:?}", global_count);
-        }
+        //     let global_count = sqlx::query!("SELECT * FROM mv_global_play_count;")
+        //         .fetch_all(&self.sql)
+        //         .await?;
+        //     dbg!("mv_global_play_count: {:?}", global_count);
+        // }
 
         Ok(())
     }
