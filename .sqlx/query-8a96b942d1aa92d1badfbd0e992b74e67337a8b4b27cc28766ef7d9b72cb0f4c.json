@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT avatar, banner, created_at, description, description_facets, did, display_name\n            FROM profiles\n            WHERE (did = ANY($1))\n            OR (handle = ANY($2))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "avatar",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "banner",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "description_facets",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "did",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "display_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "8a96b942d1aa92d1badfbd0e992b74e67337a8b4b27cc28766ef7d9b72cb0f4c"
+}
