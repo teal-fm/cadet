@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 use types::fm::teal::alpha::actor::defs::ProfileViewData;
 
 // mount actor routes
-pub fn actor_routes(app: axum::Router) -> axum::Router {
-    app.route("/fm.teal.alpha.actor.getProfile", get(get_actor))
+pub fn actor_routes() -> axum::Router {
+    axum::Router::new()
+        .route("/fm.teal.alpha.actor.getProfile", get(get_actor))
         .route("/fm.teal.alpha.actor.getProfiles", get(get_actors))
 }
 
@@ -27,11 +28,11 @@ pub async fn get_actor(
     let identity = &query.actor;
 
     if identity.is_none() {
-        return Err((StatusCode::BAD_REQUEST, "identity is required".to_string()));
+        return Err((StatusCode::BAD_REQUEST, "actor is required".to_string()));
     }
 
     match repo
-        .get_actor_profile(identity.as_ref().expect("identity is not none").as_str())
+        .get_actor_profile(identity.as_ref().expect("actor is not none").as_str())
         .await
     {
         Ok(Some(profile)) => Ok(axum::Json(GetProfileResponse { profile })),

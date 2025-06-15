@@ -2,6 +2,7 @@
 name = "aqua"
 version = "0.1.0"
 edition = "2024"
+build = "build.rs"
 
 [dependencies]
 sys-info = "0.9.1"
@@ -21,3 +22,7 @@ dotenvy.workspace = true
 
 types.workspace = true
 chrono = "0.4.41"
+
+[build-dependencies]
+vergen = { version = "9.0", features = ["build", "cargo", "rustc", "si"] }
+vergen-gitcl = "1.0.8"

@@ -21,15 +21,12 @@ use crate::{
     types::event::{Event, Kind},
 };
 
-
-
 /// The custom `zstd` dictionary used for decoding compressed Jetstream messages.
 ///
 /// Sourced from the [official Bluesky Jetstream repo.](https://github.com/bluesky-social/jetstream/tree/main/pkg/models)
 #[cfg(feature = "zstd")]
-static ZSTD_DICTIONARY: LazyLock<DecoderDictionary> = LazyLock::new(|| {
-    DecoderDictionary::copy(include_bytes!("../zstd/dictionary"))
-});
+static ZSTD_DICTIONARY: LazyLock<DecoderDictionary> =
+    LazyLock::new(|| DecoderDictionary::copy(include_bytes!("../zstd/dictionary")));
 
 pub async fn handle_message(
     message: Message,
@@ -72,9 +69,8 @@ pub async fn handle_message(
                 IoCursor::new(bytes),
                 &*ZSTD_DICTIONARY,
             )?;
-            let envelope: Event<Value> = serde_json::from_reader(decoder).map_err(|e| {
-                anyhow::anyhow!("Failed to parse binary message: {}", e)
-            })?;
+            let envelope: Event<Value> = serde_json::from_reader(decoder)
+                .map_err(|e| anyhow::anyhow!("Failed to parse binary message: {}", e))?;
             debug!("envelope: {:?}", envelope);
             handle_envelope(envelope, cursor, ingestors).await?;
             Ok(())
@@ -82,7 +78,9 @@ pub async fn handle_message(
         #[cfg(not(feature = "zstd"))]
         Message::Binary(_) => {
             debug!("Binary message received");
-            Err(anyhow::anyhow!("binary message received but zstd feature is not enabled"))
+            Err(anyhow::anyhow!(
+                "binary message received but zstd feature is not enabled"
+            ))
         }
         Message::Close(_) => {
             debug!("Server closed connection");
@@ -117,10 +115,11 @@ async fn handle_envelope(
             Ok(nsid) => {
                 if let Some(fun) = ingestors.get(&nsid) {
                     match fun.ingest(envelope).await {
-                        Ok(_) => counter!("jetstream.event.parse.commit", "nsid" => nsid)
-                            .increment(1),
+                        Ok(_) => {
+                            counter!("jetstream.event.parse.commit", "nsid" => nsid).increment(1)
+                        }
                         Err(e) => {
-                            error!("Error parsing commit: {}", e);
+                            error!("Error ingesting commit with nsid {}: {}", nsid, e);
                             counter!("jetstream.error").increment(1);
                             counter!("jetstream.event.fail").increment(1);
                         }
@@ -141,7 +140,6 @@ async fn handle_envelope(
     }
     Ok(())
 }
-
 
 fn extract_commit_nsid(envelope: &Event<Value>) -> anyhow::Result<String> {
     // if the type is not a commit
@@ -265,14 +263,20 @@ mod tests {
                 "record": { "foo": "bar" },
                 "cid": "cid123"
             },
-        }).to_string();
+        })
+        .to_string();
 
         let compressed_dest: IoCursor<Vec<u8>> = IoCursor::new(vec![]);
         let mut encoder = zstd::Encoder::with_prepared_dictionary(
             compressed_dest,
             &zstd::dict::EncoderDictionary::copy(include_bytes!("../zstd/dictionary"), 0),
-        ).unwrap();
-        std::io::copy(&mut IoCursor::new(uncompressed_json.as_bytes()), &mut encoder).unwrap();
+        )
+        .unwrap();
+        std::io::copy(
+            &mut IoCursor::new(uncompressed_json.as_bytes()),
+            &mut encoder,
+        )
+        .unwrap();
         let compressed_dest = encoder.finish().unwrap();
 
         let mut ingestors: HashMap<

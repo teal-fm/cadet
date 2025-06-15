@@ -1,10 +1,13 @@
 use actor_profile::ActorProfileRepo;
 
+use crate::repos::feed_play::FeedPlayRepo;
+
 pub mod actor_profile;
+pub mod feed_play;
 pub mod pg;
 
 #[async_trait::async_trait]
-pub trait DataSource: ActorProfileRepo + Send + Sync {
+pub trait DataSource: ActorProfileRepo + FeedPlayRepo + Send + Sync {
     fn boxed(self) -> Box<dyn DataSource>
     where
         Self: Sized + Send + Sync + 'static,

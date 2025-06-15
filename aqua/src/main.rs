@@ -28,14 +28,12 @@ async fn main() -> Result<(), String> {
 
     let app = Router::new()
         .route("/meta_info", get(api::get_meta_info))
-        .route(
-            "/xrpc/fm.teal.alpha.actor.getProfile",
-            get(xrpc::actor::get_actor),
-        )
+        .nest("/xrpc/", xrpc::actor::actor_routes())
+        .nest("/xrpc/", xrpc::feed::feed_routes())
         .layer(Extension(ctx))
         .layer(cors);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     tracing::info!("Listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
