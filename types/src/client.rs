@@ -282,6 +282,7 @@ pub mod fm {
             {
                 pub actor: actor::Service<T>,
                 pub feed: feed::Service<T>,
+                pub stats: stats::Service<T>,
                 pub(crate) _phantom: core::marker::PhantomData<T>,
             }
             pub mod actor {
@@ -294,6 +295,15 @@ pub mod fm {
                 }
             }
             pub mod feed {
+                pub struct Service<T>
+                where
+                    T: atrium_xrpc::XrpcClient + Send + Sync,
+                {
+                    pub(crate) xrpc: std::sync::Arc<T>,
+                    pub(crate) _phantom: core::marker::PhantomData<T>,
+                }
+            }
+            pub mod stats {
                 pub struct Service<T>
                 where
                     T: atrium_xrpc::XrpcClient + Send + Sync,
@@ -5282,6 +5292,7 @@ where
         Self {
             actor: fm::teal::alpha::actor::Service::new(std::sync::Arc::clone(&xrpc)),
             feed: fm::teal::alpha::feed::Service::new(std::sync::Arc::clone(&xrpc)),
+            stats: fm::teal::alpha::stats::Service::new(std::sync::Arc::clone(&xrpc)),
             _phantom: core::marker::PhantomData,
         }
     }
@@ -5443,6 +5454,166 @@ where
                 &atrium_xrpc::XrpcRequest {
                     method: http::Method::GET,
                     nsid: crate::fm::teal::alpha::feed::get_play::NSID.into(),
+                    parameters: Some(params),
+                    input: None,
+                    encoding: None,
+                },
+            )
+            .await?;
+        match response {
+            atrium_xrpc::OutputDataOrBytes::Data(data) => Ok(data),
+            _ => Err(atrium_xrpc::Error::UnexpectedResponseType),
+        }
+    }
+}
+impl<T> fm::teal::alpha::stats::Service<T>
+where
+    T: atrium_xrpc::XrpcClient + Send + Sync,
+{
+    #[allow(unused_variables)]
+    pub(crate) fn new(xrpc: std::sync::Arc<T>) -> Self {
+        Self {
+            xrpc,
+            _phantom: core::marker::PhantomData,
+        }
+    }
+    ///Get latest plays globally
+    pub async fn get_latest(
+        &self,
+        params: crate::fm::teal::alpha::stats::get_latest::Parameters,
+    ) -> atrium_xrpc::Result<
+        crate::fm::teal::alpha::stats::get_latest::Output,
+        crate::fm::teal::alpha::stats::get_latest::Error,
+    > {
+        let response = self
+            .xrpc
+            .send_xrpc::<
+                _,
+                (),
+                _,
+                _,
+            >(
+                &atrium_xrpc::XrpcRequest {
+                    method: http::Method::GET,
+                    nsid: crate::fm::teal::alpha::stats::get_latest::NSID.into(),
+                    parameters: Some(params),
+                    input: None,
+                    encoding: None,
+                },
+            )
+            .await?;
+        match response {
+            atrium_xrpc::OutputDataOrBytes::Data(data) => Ok(data),
+            _ => Err(atrium_xrpc::Error::UnexpectedResponseType),
+        }
+    }
+    pub async fn get_top_artists(
+        &self,
+        params: crate::fm::teal::alpha::stats::get_top_artists::Parameters,
+    ) -> atrium_xrpc::Result<
+        crate::fm::teal::alpha::stats::get_top_artists::Output,
+        crate::fm::teal::alpha::stats::get_top_artists::Error,
+    > {
+        let response = self
+            .xrpc
+            .send_xrpc::<
+                _,
+                (),
+                _,
+                _,
+            >(
+                &atrium_xrpc::XrpcRequest {
+                    method: http::Method::GET,
+                    nsid: crate::fm::teal::alpha::stats::get_top_artists::NSID.into(),
+                    parameters: Some(params),
+                    input: None,
+                    encoding: None,
+                },
+            )
+            .await?;
+        match response {
+            atrium_xrpc::OutputDataOrBytes::Data(data) => Ok(data),
+            _ => Err(atrium_xrpc::Error::UnexpectedResponseType),
+        }
+    }
+    pub async fn get_top_releases(
+        &self,
+        params: crate::fm::teal::alpha::stats::get_top_releases::Parameters,
+    ) -> atrium_xrpc::Result<
+        crate::fm::teal::alpha::stats::get_top_releases::Output,
+        crate::fm::teal::alpha::stats::get_top_releases::Error,
+    > {
+        let response = self
+            .xrpc
+            .send_xrpc::<
+                _,
+                (),
+                _,
+                _,
+            >(
+                &atrium_xrpc::XrpcRequest {
+                    method: http::Method::GET,
+                    nsid: crate::fm::teal::alpha::stats::get_top_releases::NSID.into(),
+                    parameters: Some(params),
+                    input: None,
+                    encoding: None,
+                },
+            )
+            .await?;
+        match response {
+            atrium_xrpc::OutputDataOrBytes::Data(data) => Ok(data),
+            _ => Err(atrium_xrpc::Error::UnexpectedResponseType),
+        }
+    }
+    pub async fn get_user_top_artists(
+        &self,
+        params: crate::fm::teal::alpha::stats::get_user_top_artists::Parameters,
+    ) -> atrium_xrpc::Result<
+        crate::fm::teal::alpha::stats::get_user_top_artists::Output,
+        crate::fm::teal::alpha::stats::get_user_top_artists::Error,
+    > {
+        let response = self
+            .xrpc
+            .send_xrpc::<
+                _,
+                (),
+                _,
+                _,
+            >(
+                &atrium_xrpc::XrpcRequest {
+                    method: http::Method::GET,
+                    nsid: crate::fm::teal::alpha::stats::get_user_top_artists::NSID
+                        .into(),
+                    parameters: Some(params),
+                    input: None,
+                    encoding: None,
+                },
+            )
+            .await?;
+        match response {
+            atrium_xrpc::OutputDataOrBytes::Data(data) => Ok(data),
+            _ => Err(atrium_xrpc::Error::UnexpectedResponseType),
+        }
+    }
+    pub async fn get_user_top_releases(
+        &self,
+        params: crate::fm::teal::alpha::stats::get_user_top_releases::Parameters,
+    ) -> atrium_xrpc::Result<
+        crate::fm::teal::alpha::stats::get_user_top_releases::Output,
+        crate::fm::teal::alpha::stats::get_user_top_releases::Error,
+    > {
+        let response = self
+            .xrpc
+            .send_xrpc::<
+                _,
+                (),
+                _,
+                _,
+            >(
+                &atrium_xrpc::XrpcRequest {
+                    method: http::Method::GET,
+                    nsid: crate::fm::teal::alpha::stats::get_user_top_releases::NSID
+                        .into(),
                     parameters: Some(params),
                     input: None,
                     encoding: None,

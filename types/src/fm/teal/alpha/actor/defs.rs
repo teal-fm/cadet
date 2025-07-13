@@ -31,7 +31,9 @@ pub struct ProfileViewData {
     pub description: core::option::Option<String>,
     ///Annotations of text in the profile description (mentions, URLs, hashtags, etc). May be changed to another (backwards compatible) lexicon.
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
-    pub description_facets: core::option::Option<Vec<crate::app::bsky::richtext::facet::Main>>,
+    pub description_facets: core::option::Option<
+        Vec<crate::app::bsky::richtext::facet::Main>,
+    >,
     ///The decentralized identifier of the actor
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
     pub did: core::option::Option<String>,
@@ -39,7 +41,9 @@ pub struct ProfileViewData {
     pub display_name: core::option::Option<String>,
     ///The user's most recent item featured on their profile.
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
-    pub featured_item: core::option::Option<crate::fm::teal::alpha::actor::profile::FeaturedItem>,
+    pub featured_item: core::option::Option<
+        crate::fm::teal::alpha::actor::profile::FeaturedItem,
+    >,
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
     pub status: core::option::Option<crate::fm::teal::alpha::actor::status::Record>,
 }

@@ -39,9 +39,7 @@ impl From<PgProfileRepoRows> for ProfileViewData {
             did: row.did,
             featured_item: None,
             display_name: row.display_name,
-            status: row
-                .status
-                .and_then(|v| serde_json::from_value(v).ok()),
+            status: row.status.and_then(|v| serde_json::from_value(v).ok()),
         }
     }
 }
@@ -70,13 +68,13 @@ impl ActorProfileRepo for PgDataSource {
 
         let profiles = sqlx::query_as!(
             PgProfileRepoRows,
-            "SELECT 
-                p.avatar, 
-                p.banner, 
-                p.created_at, 
-                p.description, 
-                p.description_facets, 
-                p.did, 
+            "SELECT
+                p.avatar,
+                p.banner,
+                p.created_at,
+                p.description,
+                p.description_facets,
+                p.did,
                 p.display_name,
                 s.record as status
             FROM profiles p

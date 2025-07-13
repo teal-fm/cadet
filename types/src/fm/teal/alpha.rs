@@ -2,3 +2,5 @@
 //!Definitions for the `fm.teal.alpha` namespace.
 pub mod actor;
 pub mod feed;
+pub mod music;
+pub mod stats;

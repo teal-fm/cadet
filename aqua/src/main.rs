@@ -30,6 +30,7 @@ async fn main() -> Result<(), String> {
         .route("/meta_info", get(api::get_meta_info))
         .nest("/xrpc/", xrpc::actor::actor_routes())
         .nest("/xrpc/", xrpc::feed::feed_routes())
+        .nest("/xrpc/", xrpc::stats::stats_routes())
         .layer(Extension(ctx))
         .layer(cors);
 
