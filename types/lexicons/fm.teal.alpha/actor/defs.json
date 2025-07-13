@@ -34,6 +34,10 @@
           "type": "string",
           "description": "IPLD of the banner image"
         },
+        "status": {
+          "type": "ref",
+          "ref": "fm.teal.alpha.actor.status#main"
+        },
         "createdAt": { "type": "string", "format": "datetime" }
       }
     },

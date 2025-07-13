@@ -22,6 +22,7 @@ pub struct PgProfileRepoRows {
     pub description_facets: Option<Value>,
     pub did: Option<String>,
     pub display_name: Option<String>,
+    pub status: Option<Value>,
 }
 
 impl From<PgProfileRepoRows> for ProfileViewData {
@@ -38,6 +39,9 @@ impl From<PgProfileRepoRows> for ProfileViewData {
             did: row.did,
             featured_item: None,
             display_name: row.display_name,
+            status: row
+                .status
+                .and_then(|v| serde_json::from_value(v).ok()),
         }
     }
 }
@@ -66,10 +70,19 @@ impl ActorProfileRepo for PgDataSource {
 
         let profiles = sqlx::query_as!(
             PgProfileRepoRows,
-            "SELECT avatar, banner, created_at, description, description_facets, did, display_name
-            FROM profiles
-            WHERE (did = ANY($1))
-            OR (handle = ANY($2))",
+            "SELECT 
+                p.avatar, 
+                p.banner, 
+                p.created_at, 
+                p.description, 
+                p.description_facets, 
+                p.did, 
+                p.display_name,
+                s.record as status
+            FROM profiles p
+            LEFT JOIN statii s ON p.did = s.did AND s.rkey = 'self'
+            WHERE (p.did = ANY($1))
+            OR (p.handle = ANY($2))",
             &dids,
             &handles,
         )

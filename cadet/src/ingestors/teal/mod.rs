@@ -1,4 +1,5 @@
 pub mod actor_profile;
+pub mod actor_status;
 pub mod feed_play;
 
 /// Parses an AT uri into parts:

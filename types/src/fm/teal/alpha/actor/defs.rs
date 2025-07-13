@@ -40,5 +40,7 @@ pub struct ProfileViewData {
     ///The user's most recent item featured on their profile.
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
     pub featured_item: core::option::Option<crate::fm::teal::alpha::actor::profile::FeaturedItem>,
+    #[serde(skip_serializing_if = "core::option::Option::is_none")]
+    pub status: core::option::Option<crate::fm::teal::alpha::actor::status::Record>,
 }
 pub type ProfileView = atrium_api::types::Object<ProfileViewData>;

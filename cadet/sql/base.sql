@@ -26,19 +26,16 @@ CREATE TABLE plays (
     isrc TEXT,
     duration INTEGER,
     track_name TEXT NOT NULL,
-    played_time TIMESTAMP
-    WITH
-        TIME ZONE,
-        processed_time TIMESTAMP
-    WITH
-        TIME ZONE,
-        release_mbid UUID,
-        release_name TEXT,
-        recording_mbid UUID,
-        submission_client_agent TEXT,
-        music_service_base_domain TEXT,
-        FOREIGN KEY (release_mbid) REFERENCES releases (mbid),
-        FOREIGN KEY (recording_mbid) REFERENCES recordings (mbid)
+    played_time TIMESTAMP WITH TIME ZONE,
+    processed_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    release_mbid UUID,
+    release_name TEXT,
+    recording_mbid UUID,
+    submission_client_agent TEXT,
+    music_service_base_domain TEXT,
+    origin_url TEXT,
+    FOREIGN KEY (release_mbid) REFERENCES releases (mbid),
+    FOREIGN KEY (recording_mbid) REFERENCES recordings (mbid)
 );
 
 CREATE INDEX idx_plays_release_mbid ON plays (release_mbid);
@@ -46,6 +43,8 @@ CREATE INDEX idx_plays_release_mbid ON plays (release_mbid);
 CREATE INDEX idx_plays_recording_mbid ON plays (recording_mbid);
 
 CREATE INDEX idx_plays_played_time ON plays (played_time);
+
+CREATE INDEX idx_plays_did ON plays (did);
 
 CREATE TABLE play_to_artists (
     play_uri TEXT, -- references plays(uri)
@@ -56,6 +55,37 @@ CREATE TABLE play_to_artists (
 );
 
 CREATE INDEX idx_play_to_artists_artist ON play_to_artists (artist_mbid);
+
+-- Profiles table
+CREATE TABLE profiles (
+    did TEXT PRIMARY KEY,
+    handle TEXT,
+    display_name TEXT,
+    description TEXT,
+    description_facets JSONB,
+    avatar TEXT, -- IPLD of the image, bafy...
+    banner TEXT,
+    created_at TIMESTAMP WITH TIME ZONE
+);
+
+-- User featured items table
+CREATE TABLE featured_items (
+    did TEXT PRIMARY KEY,
+    mbid TEXT NOT NULL,
+    type TEXT NOT NULL
+);
+
+-- Statii table (status records)
+CREATE TABLE statii (
+    uri TEXT PRIMARY KEY,
+    did TEXT NOT NULL,
+    rkey TEXT NOT NULL,
+    cid TEXT NOT NULL,
+    record JSONB NOT NULL,
+    indexed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_statii_did_rkey ON statii (did, rkey);
 
 -- Materialized view for artists' play counts
 CREATE MATERIALIZED VIEW mv_artist_play_counts AS
@@ -103,12 +133,94 @@ GROUP BY
 
 CREATE UNIQUE INDEX idx_mv_recording_play_counts ON mv_recording_play_counts (recording_mbid);
 
--- global play count
+-- Global play count materialized view
 CREATE MATERIALIZED VIEW mv_global_play_count AS
 SELECT
-    1 as id,
-    COUNT(uri) as play_count
-FROM
-    plays;
+    COUNT(uri) AS total_plays,
+    COUNT(DISTINCT did) AS unique_listeners
+FROM plays;
 
-CREATE UNIQUE INDEX idx_mv_global_play_count ON mv_global_play_count (id);
+CREATE UNIQUE INDEX idx_mv_global_play_count ON mv_global_play_count(total_plays);
+
+-- Top artists in the last 30 days
+CREATE MATERIALIZED VIEW mv_top_artists_30days AS
+SELECT
+    a.mbid AS artist_mbid,
+    a.name AS artist_name,
+    COUNT(p.uri) AS play_count
+FROM artists a
+INNER JOIN play_to_artists pta ON a.mbid = pta.artist_mbid
+INNER JOIN plays p ON p.uri = pta.play_uri
+WHERE p.played_time >= NOW() - INTERVAL '30 days'
+GROUP BY a.mbid, a.name
+ORDER BY COUNT(p.uri) DESC;
+
+-- Top releases in the last 30 days
+CREATE MATERIALIZED VIEW mv_top_releases_30days AS
+SELECT
+    r.mbid AS release_mbid,
+    r.name AS release_name,
+    COUNT(p.uri) AS play_count
+FROM releases r
+INNER JOIN plays p ON p.release_mbid = r.mbid
+WHERE p.played_time >= NOW() - INTERVAL '30 days'
+GROUP BY r.mbid, r.name
+ORDER BY COUNT(p.uri) DESC;
+
+-- Top artists for user in the last 30 days
+CREATE MATERIALIZED VIEW mv_top_artists_for_user_30days AS
+SELECT
+    prof.did,
+    a.mbid AS artist_mbid,
+    a.name AS artist_name,
+    COUNT(p.uri) AS play_count
+FROM artists a
+INNER JOIN play_to_artists pta ON a.mbid = pta.artist_mbid
+INNER JOIN plays p ON p.uri = pta.play_uri
+INNER JOIN profiles prof ON prof.did = p.did
+WHERE p.played_time >= NOW() - INTERVAL '30 days'
+GROUP BY prof.did, a.mbid, a.name
+ORDER BY COUNT(p.uri) DESC;
+
+-- Top artists for user in the last 7 days
+CREATE MATERIALIZED VIEW mv_top_artists_for_user_7days AS
+SELECT
+    prof.did,
+    a.mbid AS artist_mbid,
+    a.name AS artist_name,
+    COUNT(p.uri) AS play_count
+FROM artists a
+INNER JOIN play_to_artists pta ON a.mbid = pta.artist_mbid
+INNER JOIN plays p ON p.uri = pta.play_uri
+INNER JOIN profiles prof ON prof.did = p.did
+WHERE p.played_time >= NOW() - INTERVAL '7 days'
+GROUP BY prof.did, a.mbid, a.name
+ORDER BY COUNT(p.uri) DESC;
+
+-- Top releases for user in the last 30 days
+CREATE MATERIALIZED VIEW mv_top_releases_for_user_30days AS
+SELECT
+    prof.did,
+    r.mbid AS release_mbid,
+    r.name AS release_name,
+    COUNT(p.uri) AS play_count
+FROM releases r
+INNER JOIN plays p ON p.release_mbid = r.mbid
+INNER JOIN profiles prof ON prof.did = p.did
+WHERE p.played_time >= NOW() - INTERVAL '30 days'
+GROUP BY prof.did, r.mbid, r.name
+ORDER BY COUNT(p.uri) DESC;
+
+-- Top releases for user in the last 7 days
+CREATE MATERIALIZED VIEW mv_top_releases_for_user_7days AS
+SELECT
+    prof.did,
+    r.mbid AS release_mbid,
+    r.name AS release_name,
+    COUNT(p.uri) AS play_count
+FROM releases r
+INNER JOIN plays p ON p.release_mbid = r.mbid
+INNER JOIN profiles prof ON prof.did = p.did
+WHERE p.played_time >= NOW() - INTERVAL '7 days'
+GROUP BY prof.did, r.mbid, r.name
+ORDER BY COUNT(p.uri) DESC;

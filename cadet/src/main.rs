@@ -51,6 +51,7 @@ async fn main() {
             [
                 "fm.teal.alpha.feed.play",
                 "fm.teal.alpha.actor.profile",
+                "fm.teal.alpha.actor.status",
             ]
             .iter()
             .map(|collection| collection.to_string())
@@ -70,6 +71,13 @@ async fn main() {
     ingestors.insert(
         "fm.teal.alpha.actor.profile".to_string(),
         Box::new(ingestors::teal::actor_profile::ActorProfileIngestor::new(
+            pool.clone(),
+        )),
+    );
+
+    ingestors.insert(
+        "fm.teal.alpha.actor.status".to_string(),
+        Box::new(ingestors::teal::actor_status::ActorStatusIngestor::new(
             pool.clone(),
         )),
     );

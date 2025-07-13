@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT avatar, banner, created_at, description, description_facets, did, display_name\n            FROM profiles\n            WHERE (did = ANY($1))\n            OR (handle = ANY($2))",
+  "query": "SELECT \n                p.avatar, \n                p.banner, \n                p.created_at, \n                p.description, \n                p.description_facets, \n                p.did, \n                p.display_name,\n                s.record as status\n            FROM profiles p\n            LEFT JOIN statii s ON p.did = s.did AND s.rkey = 'self'\n            WHERE (p.did = ANY($1))\n            OR (p.handle = ANY($2))",
   "describe": {
     "columns": [
       {
@@ -37,6 +37,11 @@
         "ordinal": 6,
         "name": "display_name",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "status",
+        "type_info": "Jsonb"
       }
     ],
     "parameters": {
@@ -52,8 +57,9 @@
       true,
       true,
       false,
+      true,
       true
     ]
   },
-  "hash": "8a96b942d1aa92d1badfbd0e992b74e67337a8b4b27cc28766ef7d9b72cb0f4c"
+  "hash": "b7c97febb344af226056d06ee2e1d03321bf1124c92bd314ccdc813adf53805d"
 }
