@@ -45,6 +45,6 @@ pub struct ProfileViewData {
         crate::fm::teal::alpha::actor::profile::FeaturedItem,
     >,
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
-    pub status: core::option::Option<crate::fm::teal::alpha::actor::status::Record>,
+    pub status: core::option::Option<crate::fm::teal::alpha::actor::status::Main>,
 }
 pub type ProfileView = atrium_api::types::Object<ProfileViewData>;

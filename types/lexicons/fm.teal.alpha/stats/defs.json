@@ -22,7 +22,7 @@
     },
     "releaseView": {
       "type": "object",
-      "required": ["mbid", "name", "playCount", "artists"],
+      "required": ["mbid", "name", "playCount"],
       "properties": {
         "mbid": {
           "type": "string",
@@ -35,14 +35,6 @@
         "playCount": {
           "type": "integer",
           "description": "Total number of plays for this release"
-        },
-        "artists": {
-          "type": "array",
-          "items": {
-            "type": "ref",
-            "ref": "fm.teal.alpha.feed.defs#artist"
-          },
-          "description": "Artists associated with this release"
         }
       }
     },

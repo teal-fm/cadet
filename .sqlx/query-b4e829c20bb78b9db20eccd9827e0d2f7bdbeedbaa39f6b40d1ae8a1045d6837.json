@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT \n                p.avatar, \n                p.banner, \n                p.created_at, \n                p.description, \n                p.description_facets, \n                p.did, \n                p.display_name,\n                s.record as status\n            FROM profiles p\n            LEFT JOIN statii s ON p.did = s.did AND s.rkey = 'self'\n            WHERE (p.did = ANY($1))\n            OR (p.handle = ANY($2))",
+  "query": "SELECT\n                p.avatar,\n                p.banner,\n                p.created_at,\n                p.description,\n                p.description_facets,\n                p.did,\n                p.display_name,\n                s.record as status\n            FROM profiles p\n            LEFT JOIN statii s ON p.did = s.did AND s.rkey = 'self'\n            WHERE (p.did = ANY($1))\n            OR (p.handle = ANY($2))",
   "describe": {
     "columns": [
       {
@@ -61,5 +61,5 @@
       true
     ]
   },
-  "hash": "b7c97febb344af226056d06ee2e1d03321bf1124c92bd314ccdc813adf53805d"
+  "hash": "b4e829c20bb78b9db20eccd9827e0d2f7bdbeedbaa39f6b40d1ae8a1045d6837"
 }

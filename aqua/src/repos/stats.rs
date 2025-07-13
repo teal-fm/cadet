@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use types::fm::teal::alpha::stats::defs::{ArtistViewData, ReleaseViewData};
 use types::fm::teal::alpha::feed::defs::PlayViewData;
+use types::fm::teal::alpha::stats::defs::{ArtistViewData, ReleaseViewData};
 
 use super::{pg::PgDataSource, utc_to_atrium_datetime};
 
@@ -85,6 +85,7 @@ impl StatsRepo for PgDataSource {
             if let (Some(mbid), Some(name)) = (row.mbid, row.name) {
                 result.push(ReleaseViewData {
                     mbid: mbid.to_string(),
+
                     name,
                     play_count: row.play_count.unwrap_or(0),
                 });
@@ -179,10 +180,10 @@ impl StatsRepo for PgDataSource {
 
     async fn get_latest(&self, limit: Option<i32>) -> anyhow::Result<Vec<PlayViewData>> {
         let limit = limit.unwrap_or(50).min(100) as i64;
-        
+
         let rows = sqlx::query!(
             r#"
-            SELECT 
+            SELECT
                 uri, did, rkey, cid, isrc, duration, track_name, played_time, processed_time,
                 release_mbid, release_name, recording_mbid, submission_client_agent,
                 music_service_base_domain, origin_url,

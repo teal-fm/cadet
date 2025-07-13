@@ -25,8 +25,6 @@ pub type RecordingView = atrium_api::types::Object<RecordingViewData>;
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ReleaseViewData {
-    ///Artists associated with this release
-    pub artists: Vec<crate::fm::teal::alpha::feed::defs::Artist>,
     ///MusicBrainz release ID
     pub mbid: String,
     ///Release/album name
