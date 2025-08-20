@@ -6,13 +6,13 @@ use crate::endpoints::JetstreamEndpoints;
 pub struct JetstreamOptions {
     #[builder(default)]
     pub ws_url: JetstreamEndpoints,
-    #[builder(default)]
+    #[builder(default = 120)]
     pub max_retry_interval_seconds: u64,
-    #[builder(default)]
+    #[builder(default = 60)]
     pub connection_success_time_seconds: u64,
-    #[builder(default)]
+    #[builder(default = 65535)]
     pub bound: usize,
-    #[builder(default)]
+    #[builder(default = 40)]
     pub timeout_time_sec: usize,
     #[cfg(feature = "zstd")]
     #[builder(default = true)]
@@ -28,7 +28,7 @@ impl Default for JetstreamOptions {
             ws_url: JetstreamEndpoints::default(),
             max_retry_interval_seconds: 120,
             connection_success_time_seconds: 60,
-            bound: 65536,
+            bound: 65535,
             timeout_time_sec: 40,
             #[cfg(feature = "zstd")]
             compress: true,
