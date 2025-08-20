@@ -23,7 +23,7 @@ pub struct JetstreamConnection {
 
 impl JetstreamConnection {
     pub fn new(opts: JetstreamOptions) -> Self {
-        let (reconnect_tx, reconnect_rx) = flume::bounded(opts.bound);
+        let (reconnect_tx, reconnect_rx) = flume::bounded(1);
         let (msg_tx, msg_rx) = flume::bounded(opts.bound);
         Self {
             opts,
@@ -210,7 +210,7 @@ impl JetstreamConnection {
                     let elapsed_time = time_provider.elapsed(start_time);
                     // reset if time connected > the time we set
                     if elapsed_time.as_secs() > self.opts.max_retry_interval_seconds {
-                        retry_interval = 0;
+                        retry_interval = 1;
                         start_time = time_provider.now();
                     }
                     counter!("jetstream.connection.error").increment(1);
@@ -230,9 +230,9 @@ impl JetstreamConnection {
         }
     }
 
-    pub fn force_reconnect(&self) -> Result<(), flume::SendError<()>> {
+    pub fn force_reconnect(&self) -> Result<(), flume::TrySendError<()>> {
         info!("Force reconnect requested");
-        self.reconnect_tx.send(()) // Send a reconnect signal
+        self.reconnect_tx.try_send(()) // Send a reconnect signal
     }
 }
 
@@ -270,6 +270,7 @@ mod tests {
         let connection = JetstreamConnection::new(opts);
 
         // Spawn a task to listen for the reconnect signal
+        // will panic here if the reconnect fails!
         let reconnect_rx = connection.reconnect_rx.clone();
         let recv_task = task::spawn(async move {
             reconnect_rx
