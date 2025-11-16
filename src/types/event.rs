@@ -17,32 +17,34 @@ pub struct Event<T> {
     pub kind: Kind,
     pub commit: Option<Commit<T>>,
     pub identity: Option<Identity>,
+    pub account: Option<Account>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Identity {
-    did: String,
-    handle: Option<String>,
-    seq: u64,
-    time: String,
+    pub did: String,
+    pub handle: Option<String>,
+    pub seq: u64,
+    pub time: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-enum AccountStatus {
+pub enum AccountStatus {
     TakenDown,
     Suspended,
     Deleted,
+    Deactivated,
     Activated,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Account {
-    did: String,
-    handle: String,
-    seq: u64,
-    time: String,
-    status: AccountStatus,
+    pub did: String,
+    pub handle: Option<String>,
+    pub seq: u64,
+    pub time: String,
+    pub status: Option<AccountStatus>,
 }
 
 #[derive(Debug, Serialize)]

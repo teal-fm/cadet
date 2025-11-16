@@ -22,6 +22,32 @@ use crate::{
     types::event::{Event, Kind},
 };
 
+/// Container for different types of event ingestors.
+pub struct Ingestors {
+    /// Ingestors for commit events, keyed by collection/NSID (e.g., "app.bsky.feed.post")
+    pub commits: HashMap<String, Box<dyn LexiconIngestor + Send + Sync>>,
+    /// Optional ingestor for identity events
+    pub identity: Option<Box<dyn LexiconIngestor + Send + Sync>>,
+    /// Optional ingestor for account events
+    pub account: Option<Box<dyn LexiconIngestor + Send + Sync>>,
+}
+
+impl Ingestors {
+    pub fn new() -> Self {
+        Self {
+            commits: HashMap::new(),
+            identity: None,
+            account: None,
+        }
+    }
+}
+
+impl Default for Ingestors {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// The custom `zstd` dictionary used for decoding compressed Jetstream messages.
 ///
 /// Sourced from the [official Bluesky Jetstream repo.](https://github.com/bluesky-social/jetstream/tree/main/pkg/models)
@@ -31,7 +57,7 @@ static ZSTD_DICTIONARY: LazyLock<DecoderDictionary> =
 
 pub async fn handle_message(
     message: Message,
-    ingestors: &HashMap<String, Box<dyn LexiconIngestor + Send + Sync>>,
+    ingestors: &Ingestors,
     reconnect_tx: Sender<()>,
     cursor: Arc<Mutex<Option<u64>>>,
 ) -> Result<()> {
@@ -93,7 +119,7 @@ pub async fn handle_message(
 async fn handle_envelope(
     envelope: Event<Value>,
     cursor: Arc<Mutex<Option<u64>>>,
-    ingestors: &HashMap<String, Box<dyn LexiconIngestor + Send + Sync>>,
+    ingestors: &Ingestors,
 ) -> Result<()> {
     if let Some(ref time_us) = envelope.time_us {
         if let Some(cursor) = cursor.lock().unwrap().as_mut() {
@@ -106,7 +132,7 @@ async fn handle_envelope(
     match envelope.kind {
         Kind::Commit => match extract_commit_nsid(&envelope) {
             Ok(nsid) => {
-                if let Some(fun) = ingestors.get(&nsid) {
+                if let Some(fun) = ingestors.commits.get(&nsid) {
                     let ingest_start = Instant::now();
 
                     match fun.ingest(envelope).await {
@@ -134,10 +160,55 @@ async fn handle_envelope(
             Err(e) => error!("Error parsing commit: {}", e),
         },
         Kind::Identity => {
-            counter!("jetstream.event.parse.identity").increment(1);
+            if let Some(ref ingestor) = ingestors.identity {
+                let ingest_start = Instant::now();
+
+                match ingestor.ingest(envelope).await {
+                    Ok(_) => {
+                        let ingest_duration = ingest_start.elapsed();
+
+                        if ingest_duration.as_secs() >= 5 {
+                            warn!(
+                                "Slow ingestor: identity took {}s",
+                                ingest_duration.as_secs()
+                            );
+                        }
+
+                        counter!("jetstream.event.parse.identity").increment(1);
+                    }
+                    Err(e) => {
+                        error!("Error ingesting identity event: {}", e);
+                        counter!("jetstream.error").increment(1);
+                        counter!("jetstream.event.fail").increment(1);
+                    }
+                }
+            } else {
+                counter!("jetstream.event.parse.identity").increment(1);
+            }
         }
         Kind::Account => {
-            counter!("jetstream.event.parse.account").increment(1);
+            if let Some(ref ingestor) = ingestors.account {
+                let ingest_start = Instant::now();
+
+                match ingestor.ingest(envelope).await {
+                    Ok(_) => {
+                        let ingest_duration = ingest_start.elapsed();
+
+                        if ingest_duration.as_secs() >= 5 {
+                            warn!("Slow ingestor: account took {}s", ingest_duration.as_secs());
+                        }
+
+                        counter!("jetstream.event.parse.account").increment(1);
+                    }
+                    Err(e) => {
+                        error!("Error ingesting account event: {}", e);
+                        counter!("jetstream.error").increment(1);
+                        counter!("jetstream.event.fail").increment(1);
+                    }
+                }
+            } else {
+                counter!("jetstream.event.parse.account").increment(1);
+            }
         }
         Kind::Unknown(kind) => {
             counter!("jetstream.event.parse.unknown", "kind" => kind).increment(1);
@@ -167,10 +238,7 @@ mod tests {
     use async_trait::async_trait;
     use flume::{Receiver, Sender};
     use serde_json::json;
-    use std::{
-        collections::HashMap,
-        sync::{Arc, Mutex},
-    };
+    use std::sync::{Arc, Mutex};
     use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
 
     // Dummy ingestor that records if it was called.
@@ -224,11 +292,8 @@ mod tests {
         })
         .to_string();
 
-        let mut ingestors: HashMap<
-            String,
-            Box<dyn crate::ingestion::LexiconIngestor + Send + Sync>,
-        > = HashMap::new();
-        ingestors.insert(
+        let mut ingestors = Ingestors::new();
+        ingestors.commits.insert(
             "ns1".to_string(),
             Box::new(DummyIngestor {
                 called: called_flag.clone(),
@@ -288,11 +353,8 @@ mod tests {
         .unwrap();
         let compressed_dest = encoder.finish().unwrap();
 
-        let mut ingestors: HashMap<
-            String,
-            Box<dyn crate::ingestion::LexiconIngestor + Send + Sync>,
-        > = HashMap::new();
-        ingestors.insert(
+        let mut ingestors = Ingestors::new();
+        ingestors.commits.insert(
             "ns1".to_string(),
             Box::new(DummyIngestor {
                 called: called_flag.clone(),
@@ -338,11 +400,10 @@ mod tests {
         })
         .to_string();
 
-        let mut ingestors: HashMap<
-            String,
-            Box<dyn crate::ingestion::LexiconIngestor + Send + Sync>,
-        > = HashMap::new();
-        ingestors.insert("ns_error".to_string(), Box::new(ErrorIngestor));
+        let mut ingestors = Ingestors::new();
+        ingestors
+            .commits
+            .insert("ns_error".to_string(), Box::new(ErrorIngestor));
 
         // Even though ingestion fails, handle_message returns Ok(()).
         let utf8 = Utf8Bytes::from(event_json);
@@ -376,8 +437,7 @@ mod tests {
             }
         })
         .to_string();
-        let ingestors: HashMap<String, Box<dyn crate::ingestion::LexiconIngestor + Send + Sync>> =
-            HashMap::new();
+        let ingestors = Ingestors::new();
 
         let utf8 = Utf8Bytes::from(event_json);
 
@@ -389,8 +449,7 @@ mod tests {
     async fn test_close_message() {
         let (reconnect_tx, reconnect_rx) = setup_reconnect_channel();
         let cursor = Arc::new(Mutex::new(None));
-        let ingestors: HashMap<String, Box<dyn crate::ingestion::LexiconIngestor + Send + Sync>> =
-            HashMap::new();
+        let ingestors = Ingestors::new();
 
         let result = handle_message(Message::Close(None), &ingestors, reconnect_tx, cursor).await;
         // Should return an error due to connection close.
@@ -404,8 +463,7 @@ mod tests {
     async fn test_invalid_json() {
         let (reconnect_tx, _reconnect_rx) = setup_reconnect_channel();
         let cursor = Arc::new(Mutex::new(None));
-        let ingestors: HashMap<String, Box<dyn crate::ingestion::LexiconIngestor + Send + Sync>> =
-            HashMap::new();
+        let ingestors = Ingestors::new();
 
         let invalid_json = "this is not json".to_string();
         let utf8 = Utf8Bytes::from(invalid_json);
@@ -435,11 +493,8 @@ mod tests {
         .to_string();
 
         // Use a dummy ingestor that does nothing.
-        let mut ingestors: HashMap<
-            String,
-            Box<dyn crate::ingestion::LexiconIngestor + Send + Sync>,
-        > = HashMap::new();
-        ingestors.insert(
+        let mut ingestors = Ingestors::new();
+        ingestors.commits.insert(
             "ns1".to_string(),
             Box::new(DummyIngestor {
                 called: Arc::new(Mutex::new(false)),
@@ -455,6 +510,152 @@ mod tests {
         .await;
         assert!(result.is_ok());
         // Cursor should remain unchanged.
+        assert_eq!(*cursor.lock().unwrap(), Some(300));
+    }
+
+    #[tokio::test]
+    async fn test_identity_with_ingestor() {
+        let (reconnect_tx, _reconnect_rx) = setup_reconnect_channel();
+        let cursor = Arc::new(Mutex::new(Some(100)));
+        let called_flag = Arc::new(Mutex::new(false));
+
+        let event_json = json!({
+            "did": "did:example:123",
+            "time_us": 200,
+            "kind": "identity",
+            "commit": null,
+            "identity": {
+                "did": "did:example:123",
+                "handle": "user.bsky.social",
+                "seq": 42,
+                "time": "2025-01-01T00:00:00Z"
+            }
+        })
+        .to_string();
+
+        let mut ingestors = Ingestors::new();
+        ingestors.identity = Some(Box::new(DummyIngestor {
+            called: called_flag.clone(),
+        }));
+
+        let utf8 = Utf8Bytes::from(event_json);
+
+        let result = handle_message(
+            Message::Text(utf8),
+            &ingestors,
+            reconnect_tx,
+            cursor.clone(),
+        )
+        .await;
+        assert!(result.is_ok());
+        assert!(*called_flag.lock().unwrap());
+        assert_eq!(*cursor.lock().unwrap(), Some(200));
+    }
+
+    #[tokio::test]
+    async fn test_identity_ingest_failure() {
+        let (reconnect_tx, _reconnect_rx) = setup_reconnect_channel();
+        let cursor = Arc::new(Mutex::new(Some(100)));
+
+        let event_json = json!({
+            "did": "did:example:123",
+            "time_us": 300,
+            "kind": "identity",
+            "commit": null,
+            "identity": {
+                "did": "did:example:123",
+                "handle": "user.bsky.social",
+                "seq": 42,
+                "time": "2025-01-01T00:00:00Z"
+            }
+        })
+        .to_string();
+
+        let mut ingestors = Ingestors::new();
+        ingestors.identity = Some(Box::new(ErrorIngestor));
+
+        let utf8 = Utf8Bytes::from(event_json);
+        let result = handle_message(
+            Message::Text(utf8),
+            &ingestors,
+            reconnect_tx,
+            cursor.clone(),
+        )
+        .await;
+        assert!(result.is_ok());
+        assert_eq!(*cursor.lock().unwrap(), Some(300));
+    }
+
+    #[tokio::test]
+    async fn test_account_with_ingestor() {
+        let (reconnect_tx, _reconnect_rx) = setup_reconnect_channel();
+        let cursor = Arc::new(Mutex::new(Some(100)));
+        let called_flag = Arc::new(Mutex::new(false));
+
+        let event_json = json!({
+            "did": "did:example:123",
+            "time_us": 200,
+            "kind": "account",
+            "commit": null,
+            "account": {
+                "active": true,
+                "did": "did:example:123",
+                "seq": 42,
+                "time": "2025-01-01T00:00:00Z"
+            }
+        })
+        .to_string();
+
+        let mut ingestors = Ingestors::new();
+        ingestors.account = Some(Box::new(DummyIngestor {
+            called: called_flag.clone(),
+        }));
+
+        let utf8 = Utf8Bytes::from(event_json);
+
+        let result = handle_message(
+            Message::Text(utf8),
+            &ingestors,
+            reconnect_tx,
+            cursor.clone(),
+        )
+        .await;
+        assert!(result.is_ok());
+        assert!(*called_flag.lock().unwrap());
+        assert_eq!(*cursor.lock().unwrap(), Some(200));
+    }
+
+    #[tokio::test]
+    async fn test_account_ingest_failure() {
+        let (reconnect_tx, _reconnect_rx) = setup_reconnect_channel();
+        let cursor = Arc::new(Mutex::new(Some(100)));
+
+        let event_json = json!({
+            "did": "did:example:123",
+            "time_us": 300,
+            "kind": "account",
+            "commit": null,
+            "account": {
+                "active": false,
+                "did": "did:example:123",
+                "seq": 42,
+                "time": "2025-01-01T00:00:00Z"
+            }
+        })
+        .to_string();
+
+        let mut ingestors = Ingestors::new();
+        ingestors.account = Some(Box::new(ErrorIngestor));
+
+        let utf8 = Utf8Bytes::from(event_json);
+        let result = handle_message(
+            Message::Text(utf8),
+            &ingestors,
+            reconnect_tx,
+            cursor.clone(),
+        )
+        .await;
+        assert!(result.is_ok());
         assert_eq!(*cursor.lock().unwrap(), Some(300));
     }
 }

@@ -1,13 +1,13 @@
 use async_trait::async_trait;
 use rocketman::{
     connection::JetstreamConnection,
-    handler,
+    handler::{self, Ingestors},
     ingestion::LexiconIngestor,
     options::JetstreamOptions,
     types::event::{Commit, Event},
 };
 use serde_json::Value;
-use std::{collections::HashMap, sync::Arc, sync::Mutex};
+use std::{sync::Arc, sync::Mutex};
 
 #[tokio::main]
 async fn main() {
@@ -24,12 +24,18 @@ async fn main() {
     let jetstream = JetstreamConnection::new(opts);
 
     // create your ingestors
-    let mut ingestors: HashMap<String, Box<dyn LexiconIngestor + Send + Sync>> = HashMap::new();
-    ingestors.insert(
+    let mut ingestors = Ingestors::new();
+
+    // register commit ingestor for posts
+    ingestors.commits.insert(
         // your EXACT nsid
         "app.bsky.feed.post".to_string(),
-        Box::new(MyCoolIngestor),
+        Box::new(PostIngestor),
     );
+
+    // optionally register identity/account ingestors
+    // ingestors.identity = Some(Box::new(MyIdentityIngestor));
+    // ingestors.account = Some(Box::new(MyAccountIngestor));
 
     // tracks the last message we've processed
     let cursor: Arc<Mutex<Option<u64>>> = Arc::new(Mutex::new(None));
@@ -60,11 +66,11 @@ async fn main() {
     }
 }
 
-pub struct MyCoolIngestor;
+pub struct PostIngestor;
 
 /// A cool ingestor implementation. Will just print the message. Does not do verification.
 #[async_trait]
-impl LexiconIngestor for MyCoolIngestor {
+impl LexiconIngestor for PostIngestor {
     async fn ingest(&self, message: Event<Value>) -> anyhow::Result<()> {
         if let Some(Commit {
             record: Some(record),

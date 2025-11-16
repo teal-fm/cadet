@@ -6,8 +6,11 @@ use std::{
 use anyhow::Result;
 use async_trait::async_trait;
 use rocketman::{
-    connection::JetstreamConnection, handler, ingestion::LexiconIngestor,
-    options::JetstreamOptions, types::event::Event,
+    connection::JetstreamConnection,
+    handler::{self, Ingestors},
+    ingestion::LexiconIngestor,
+    options::JetstreamOptions,
+    types::event::Event,
 };
 use serde_json::Value;
 use tracing::{error, info, warn};
@@ -81,6 +84,12 @@ pub async fn start_idle_test() -> Result<()> {
         let mut message_count = 0u64;
         let mut last_log = std::time::Instant::now();
 
+        let ing = Ingestors {
+            commits: ingestors,
+            identity: None,
+            account: None,
+        };
+
         while let Ok(message) = msg_rx.recv_async().await {
             message_count += 1;
 
@@ -95,13 +104,8 @@ pub async fn start_idle_test() -> Result<()> {
                 last_log = std::time::Instant::now();
             }
 
-            match handler::handle_message(
-                message,
-                &ingestors,
-                reconnect_tx.clone(),
-                c_cursor.clone(),
-            )
-            .await
+            match handler::handle_message(message, &ing, reconnect_tx.clone(), c_cursor.clone())
+                .await
             {
                 Ok(_) => {}
                 Err(e) => {
