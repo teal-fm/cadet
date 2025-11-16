@@ -122,6 +122,14 @@ impl LexiconIngestor for AccountIngestor {
             status,
         }) = message.account
         {
+            let handle_str = handle
+                .as_ref()
+                .map(|h| format!(" handle={h}"))
+                .unwrap_or_default();
+            let status_str = status
+                .as_ref()
+                .map(|s| format!(" status={s:?}"))
+                .unwrap_or_default();
             println!("[ACCOUNT] seq={seq} did={did}{handle_str}{status_str} time={time}");
         }
         Ok(())
