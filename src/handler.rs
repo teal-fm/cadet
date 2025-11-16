@@ -171,7 +171,7 @@ mod tests {
         collections::HashMap,
         sync::{Arc, Mutex},
     };
-    use tokio_tungstenite::tungstenite::Message;
+    use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
 
     // Dummy ingestor that records if it was called.
     struct DummyIngestor {
@@ -235,8 +235,10 @@ mod tests {
             }),
         );
 
+        let utf8bytes = Utf8Bytes::from(event_json);
+
         let result = handle_message(
-            Message::Text(event_json),
+            Message::Text(utf8bytes),
             &ingestors,
             reconnect_tx,
             cursor.clone(),
@@ -252,6 +254,8 @@ mod tests {
     #[cfg(feature = "zstd")]
     #[tokio::test]
     async fn test_binary_valid_commit() {
+        use tokio_tungstenite::tungstenite::Bytes;
+
         let (reconnect_tx, _reconnect_rx) = setup_reconnect_channel();
         let cursor = Arc::new(Mutex::new(Some(100)));
         let called_flag = Arc::new(Mutex::new(false));
@@ -295,8 +299,10 @@ mod tests {
             }),
         );
 
+        let binary = Bytes::from(compressed_dest.into_inner());
+
         let result = handle_message(
-            Message::Binary(compressed_dest.into_inner()),
+            Message::Binary(binary),
             &ingestors,
             reconnect_tx,
             cursor.clone(),
@@ -339,8 +345,9 @@ mod tests {
         ingestors.insert("ns_error".to_string(), Box::new(ErrorIngestor));
 
         // Even though ingestion fails, handle_message returns Ok(()).
+        let utf8 = Utf8Bytes::from(event_json);
         let result = handle_message(
-            Message::Text(event_json),
+            Message::Text(utf8),
             &ingestors,
             reconnect_tx,
             cursor.clone(),
@@ -372,8 +379,9 @@ mod tests {
         let ingestors: HashMap<String, Box<dyn crate::ingestion::LexiconIngestor + Send + Sync>> =
             HashMap::new();
 
-        let result =
-            handle_message(Message::Text(event_json), &ingestors, reconnect_tx, cursor).await;
+        let utf8 = Utf8Bytes::from(event_json);
+
+        let result = handle_message(Message::Text(utf8), &ingestors, reconnect_tx, cursor).await;
         assert!(result.is_ok());
     }
 
@@ -400,13 +408,8 @@ mod tests {
             HashMap::new();
 
         let invalid_json = "this is not json".to_string();
-        let result = handle_message(
-            Message::Text(invalid_json),
-            &ingestors,
-            reconnect_tx,
-            cursor,
-        )
-        .await;
+        let utf8 = Utf8Bytes::from(invalid_json);
+        let result = handle_message(Message::Text(utf8), &ingestors, reconnect_tx, cursor).await;
         assert!(result.is_err());
     }
 
@@ -442,9 +445,9 @@ mod tests {
                 called: Arc::new(Mutex::new(false)),
             }),
         );
-
+        let utf8 = Utf8Bytes::from(event_json);
         let result = handle_message(
-            Message::Text(event_json),
+            Message::Text(utf8),
             &ingestors,
             reconnect_tx,
             cursor.clone(),

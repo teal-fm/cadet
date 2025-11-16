@@ -92,6 +92,10 @@ impl JetstreamConnection {
             Unit::Count,
             "reconnects to jetstream service"
         );
+
+        //https://github.com/snapview/tokio-tungstenite/issues/336
+        let _ = rustls::crypto::ring::default_provider().install_default();
+
         let mut retry_interval = 1;
 
         let time_provider = SystemTimeProvider::new();
@@ -312,6 +316,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_connection_retries_on_failure() {
+        //https://github.com/snapview/tokio-tungstenite/issues/336
+        let _ = rustls::crypto::ring::default_provider().install_default();
         let opts = JetstreamOptions::default();
         let connection = Arc::new(JetstreamConnection::new(opts));
 
@@ -324,39 +330,75 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_reconnect_after_receive_timeout() {
+    async fn test_forced_reconnect_behavior() {
+        use std::sync::atomic::{AtomicU32, Ordering};
         use tokio::net::TcpListener;
         use tokio_tungstenite::accept_async;
 
+        // Set up server on random available port
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("Failed to bind");
+        let port = listener.local_addr().unwrap().port();
+
         let opts = JetstreamOptions {
-            ws_url: crate::endpoints::JetstreamEndpoints::Custom("ws://127.0.0.1:9001".to_string()),
+            ws_url: crate::endpoints::JetstreamEndpoints::Custom(format!(
+                "ws://127.0.0.1:{}",
+                port
+            )),
             bound: 5,
             max_retry_interval_seconds: 1,
             ..Default::default()
         };
-        let connection = JetstreamConnection::new(opts);
+        let connection = Arc::new(JetstreamConnection::new(opts));
         let cursor = Arc::new(Mutex::new(None));
 
-        // set up dummy "websocket"
-        let listener = TcpListener::bind("127.0.0.1:9001")
-            .await
-            .expect("Failed to bind");
+        let connection_count = Arc::new(AtomicU32::new(0));
+        let count_clone = connection_count.clone();
+
+        // Server that accepts multiple connections
         let server_handle = tokio::spawn(async move {
-            if let Ok((stream, _)) = listener.accept().await {
-                let ws_stream = accept_async(stream).await.expect("Failed to accept");
-                // send nothing
-                tokio::time::sleep(Duration::from_secs(6)).await;
-                drop(ws_stream);
+            for _ in 0..3 {
+                if let Ok((stream, _)) = listener.accept().await {
+                    count_clone.fetch_add(1, Ordering::SeqCst);
+
+                    // Accept WebSocket handshake and keep connection alive briefly
+                    tokio::spawn(async move {
+                        if let Ok(_ws_stream) = accept_async(stream).await {
+                            tokio::time::sleep(Duration::from_millis(500)).await;
+                        }
+                    });
+                }
             }
         });
 
-        // spawn, then run for >30 seconds to trigger reconnect
+        // Clone connection for the connection task
+        let connection_clone = connection.clone();
         let connect_handle = tokio::spawn(async move {
-            tokio::time::timeout(Duration::from_secs(5), connection.connect(cursor))
+            tokio::time::timeout(Duration::from_secs(3), connection_clone.connect(cursor))
                 .await
                 .ok();
         });
 
+        // Wait a bit for initial connection
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        // Force a single reconnect
+        connection
+            .force_reconnect()
+            .expect("Failed to force reconnect");
+
+        // Wait for reconnect to be processed
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
         let _ = tokio::join!(server_handle, connect_handle);
+
+        // Verify that multiple connections were made
+        let final_count = connection_count.load(Ordering::SeqCst);
+        assert!(
+            final_count >= 2,
+            "Expected at least 2 connections (initial + forced reconnects), got {}",
+            final_count
+        );
     }
 }
