@@ -1,5 +1,5 @@
 use anyhow::Result;
-use flume::Sender;
+use async_channel::Sender;
 use metrics::{counter, describe_counter, Unit};
 use serde_json::Value;
 use std::{
@@ -106,7 +106,7 @@ pub async fn handle_message(
             "binary message received but zstd feature is not enabled"
         )),
         Message::Close(_) => {
-            if let Err(e) = reconnect_tx.send(()) {
+            if let Err(e) = reconnect_tx.send(()).await {
                 counter!("jetstream.event.parse.error", "error" => "failed_to_send_reconnect_signal").increment(1);
                 error!("Failed to send reconnect signal: {}", e);
             }
@@ -236,7 +236,7 @@ mod tests {
     use crate::types::event::Event;
     use anyhow::Result;
     use async_trait::async_trait;
-    use flume::{Receiver, Sender};
+    use async_channel::{Receiver, Sender};
     use serde_json::json;
     use std::sync::{Arc, Mutex};
     use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
@@ -267,7 +267,7 @@ mod tests {
 
     // Helper to create a reconnect channel.
     fn setup_reconnect_channel() -> (Sender<()>, Receiver<()>) {
-        flume::unbounded()
+        async_channel::unbounded()
     }
 
     #[tokio::test]
@@ -276,7 +276,6 @@ mod tests {
         let cursor = Arc::new(Mutex::new(Some(100)));
         let called_flag = Arc::new(Mutex::new(false));
 
-        // Create a valid commit event JSON.
         let event_json = json!({
             "did": "did:example:123",
             "time_us": 200,
@@ -310,9 +309,7 @@ mod tests {
         )
         .await;
         assert!(result.is_ok());
-        // Check that the ingestor was called.
         assert!(*called_flag.lock().unwrap());
-        // Verify that the cursor got updated.
         assert_eq!(*cursor.lock().unwrap(), Some(200));
     }
 
@@ -455,7 +452,7 @@ mod tests {
         // Should return an error due to connection close.
         assert!(result.is_err());
         // Verify that a reconnect signal was sent.
-        let signal = reconnect_rx.recv_async().await;
+        let signal = reconnect_rx.recv().await;
         assert!(signal.is_ok());
     }
 

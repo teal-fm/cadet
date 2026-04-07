@@ -48,7 +48,7 @@ async fn main() {
     // this is a simple implementation, you can use a more complex one based on needs.
     let c_cursor = cursor.clone();
     tokio::spawn(async move {
-        while let Ok(message) = msg_rx.recv_async().await {
+        while let Ok(message) = msg_rx.recv().await {
             if let Err(e) =
                 handler::handle_message(message, &ingestors, reconnect_tx.clone(), c_cursor.clone())
                     .await

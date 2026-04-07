@@ -1,4 +1,4 @@
-use flume::{Receiver, Sender};
+use async_channel::{Receiver, Sender};
 use futures_util::StreamExt;
 use metrics::{counter, describe_counter, describe_histogram, histogram, Unit};
 use std::cmp::{max, min};
@@ -15,16 +15,16 @@ use crate::time::TimeProvider;
 
 pub struct JetstreamConnection {
     pub opts: JetstreamOptions,
-    reconnect_tx: flume::Sender<()>,
-    reconnect_rx: flume::Receiver<()>,
-    msg_tx: flume::Sender<Message>,
-    msg_rx: flume::Receiver<Message>,
+    reconnect_tx: Sender<()>,
+    reconnect_rx: Receiver<()>,
+    msg_tx: Sender<Message>,
+    msg_rx: Receiver<Message>,
 }
 
 impl JetstreamConnection {
     pub fn new(opts: JetstreamOptions) -> Self {
-        let (reconnect_tx, reconnect_rx) = flume::bounded(1);
-        let (msg_tx, msg_rx) = flume::bounded(opts.bound);
+        let (reconnect_tx, reconnect_rx) = async_channel::bounded(1);
+        let (msg_tx, msg_rx) = async_channel::bounded(opts.bound);
         Self {
             opts,
             reconnect_tx,
@@ -137,13 +137,12 @@ impl JetstreamConnection {
                                                 // Use try_send to prevent blocking on full queue
                                                 match self.msg_tx.try_send(message) {
                                                     Ok(_) => {},
-                                                    Err(flume::TrySendError::Full(message)) => {
+                                                    Err(async_channel::TrySendError::Full(message)) => {
                                                         warn!("Message queue full, falling back to timeout send");
                                                         counter!("jetstream.queue.full").increment(1);
 
-                                                        // Fall back to async send but with timeout to prevent stall
                                                         let send_timeout = Duration::from_secs(5);
-                                                        match tokio::time::timeout(send_timeout, self.msg_tx.send_async(message)).await {
+                                                        match tokio::time::timeout(send_timeout, self.msg_tx.send(message)).await {
                                                             Ok(Ok(_)) => {},
                                                             Ok(Err(err)) => {
                                                                 counter!("jetstream.error").increment(1);
@@ -152,12 +151,12 @@ impl JetstreamConnection {
                                                             Err(_) => {
                                                                 counter!("jetstream.error").increment(1);
                                                                 error!("Consumer appears stalled - forcing reconnect");
-                                                                break; // Force reconnect to unstick
+                                                                break;
                                                             }
                                                         }
                                                     }
-                                                    Err(flume::TrySendError::Disconnected(_)) => {
-                                                        error!("Message channel disconnected");
+                                                    Err(async_channel::TrySendError::Closed(_)) => {
+                                                        error!("Message channel closed");
                                                         counter!("jetstream.error").increment(1);
                                                         break;
                                                     }
@@ -176,7 +175,7 @@ impl JetstreamConnection {
                                     }
                                 }
                             }
-                            _ = self.reconnect_rx.recv_async() => {
+                            _ = self.reconnect_rx.recv() => {
                                 info!("Reconnect signal received");
                                 counter!("jetstream.connection.reconnect").increment(1);
                                 break;
@@ -234,7 +233,7 @@ impl JetstreamConnection {
         }
     }
 
-    pub fn force_reconnect(&self) -> Result<(), flume::TrySendError<()>> {
+    pub fn force_reconnect(&self) -> Result<(), async_channel::TrySendError<()>> {
         info!("Force reconnect requested");
         self.reconnect_tx.try_send(()) // Send a reconnect signal
     }
@@ -278,7 +277,7 @@ mod tests {
         let reconnect_rx = connection.reconnect_rx.clone();
         let recv_task = task::spawn(async move {
             reconnect_rx
-                .recv_async()
+                .recv()
                 .await
                 .expect("Failed to receive reconnect signal");
         });
@@ -302,13 +301,12 @@ mod tests {
         // Send a message to the queue
         connection
             .msg_tx
-            .send_async(msg.clone())
+            .send(msg.clone())
             .await
             .expect("Failed to send message");
 
-        // Receive and verify the message
         let received = msg_rx
-            .recv_async()
+            .recv()
             .await
             .expect("Failed to receive message");
         assert_eq!(received, msg);

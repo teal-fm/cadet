@@ -21,7 +21,7 @@ use tracing::{error, info, warn};
 /// the server closes the connection after timeout and
 /// rocketman should reconnect automatically.
 ///
-/// Run with: cargo run --example reproduce-stall
+/// Run with: cargo run --example bsky-posts
 ///
 /// Expected behavior:
 /// 1. Initial connection
@@ -45,7 +45,7 @@ pub async fn start_idle_test() -> Result<()> {
     let opts = JetstreamOptions::builder()
         .wanted_collections(vec![
             // This is a custom collection that will get zero traffic
-            "moe.hayden.blogi.actor.profile".to_string(),
+            "app.bsky.feed.post".to_string(),
         ])
         .timeout_time_sec(20) // Shorter timeout for faster testing
         .bound(65536)

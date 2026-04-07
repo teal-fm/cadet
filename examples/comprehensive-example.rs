@@ -52,7 +52,7 @@ async fn main() {
     // spawn a task to process messages from the queue.
     let c_cursor = cursor.clone();
     tokio::spawn(async move {
-        while let Ok(message) = msg_rx.recv_async().await {
+        while let Ok(message) = msg_rx.recv().await {
             if let Err(e) =
                 handler::handle_message(message, &ingestors, reconnect_tx.clone(), c_cursor.clone())
                     .await
